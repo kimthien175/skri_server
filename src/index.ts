@@ -1,11 +1,8 @@
-const express = require("express");
+console.log('hello world')
+
+import express from "express";
+
 const app = express();
-const port = 3000;
-
-app.get("/", (_req: any, res: any) => {
-  res.send("Hello World!");
-});
-
-app.listen(port, () => {
-  console.log(`Example app listeniasdfasdfasdfng on port ${port}`);
+app.listen(4000, () => {
+  console.log(`server runningggh on port 4000`);
 });
