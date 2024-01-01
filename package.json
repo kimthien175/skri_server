@@ -12,11 +12,14 @@
   ],
   "typings": "./lib/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "start": "NODE_PATH=./build node build/index.js",
+    "build": "tsc -p .",
+    "dev": "nodemon src/index.ts",
     "lint": "tslint -c tslint.json src/**/*.ts",
     "prepublish": "npm run build"
   },
   "devDependencies": {
+    "nodemon": "^3.0.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }

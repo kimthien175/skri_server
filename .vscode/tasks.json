@@ -1,4 +1,5 @@
 {
+	// presentation.reveal: "silent" for no triggering task's terminal on debugging
 	"version": "2.0.0",
 	"tasks": [
 		{
