@@ -1,11 +1,12 @@
 console.log('hello world')
 
-import express from "express";
+import express from "express"
+//import {Server} from "socket.io"
 
 const app = express();
 app.listen(4000, () => {
   console.log(`server runningggh on port 4000`);
-  console.log('yolo helele')
+  console.log('how are you today');
 });
 
 app.get("/", (req, res) => {

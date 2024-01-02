@@ -17,5 +17,8 @@
     "nodemon": "^3.0.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "socket.io": "^4.7.2"
   }
 }
