@@ -18,10 +18,18 @@ app.get('/news', async function (req, res) {
 
 
 const httpServer = createServer(app)
-const io = new Server(httpServer)
+const io = new Server(httpServer, {
+  cors:{
+    origin: "https://example.com",
+    methods: ['GET', 'POST']
+  }
+})
 
 io.on('connection', (socket) => {
-  //..
+  console.log('SOCKET.IO: CONNECTED');
+  socket.on('disconnect', () => {
+    console.log('DISCONNECTED');
+  });
 })
 
 httpServer.listen(4000)
