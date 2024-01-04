@@ -15,3 +15,13 @@ services:
     ports:
       - '4000:4000'
     command: npm run dev
+    links:
+      - mongo
+
+  mongo: 
+    container_name: mongo
+    image: mongo
+    volumes:
+      - ./data:/data/db
+    ports:
+      - '27018:27017'

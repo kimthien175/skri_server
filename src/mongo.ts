@@ -1,5 +1,5 @@
 const { MongoClient, ServerApiVersion } = require("mongodb")
-const uri = "mongodb://:27479ce28bd3:27017/"
+const uri = "mongodb://mongo:27017/"
 const mongoClient = new MongoClient(uri, {
     serverApi: {
         version: ServerApiVersion.v1,
@@ -9,11 +9,21 @@ const mongoClient = new MongoClient(uri, {
 })
 
 
-export async function getNews(): Promise<string>{
+export async function getNews(): Promise<JSON>{
+    var result = Object({})
     try{
         await mongoClient.connect()
-        return await mongoClient.db("skribbl").collection('news').find().sort({_id:-1}).limit(1)
-    } finally{
-        await mongoClient.close()
+        var cursor =  mongoClient.db("skribbl").collection('news').find({}).sort({ _id: -1 }).limit(1)
+        var doc = await cursor.next()
+        if (doc){
+            return doc.base64
+        } else {
+            throw new Error('Can not find document')
+        }
+    } catch (e){
+        console.log('ERROR');
+        console.log(e);
     }
+    await mongoClient.close()
+    return result
 }
