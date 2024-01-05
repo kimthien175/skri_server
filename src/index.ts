@@ -1,35 +1,3 @@
-import { Server } from "socket.io"
-import express = require('express')
-import { createServer } from 'http'
-import { getNews } from "./mongo"
-var cors = require('cors')
-
-
-const app = express()
-app.use(cors())
-
-app.get('/', (req, res) => {
-  res.send('Hello Worldd! he')
-})
-app.get('/news', async function (req, res) {
-  var lastestNews = await getNews()
-  res.send(lastestNews)
-})
-
-
-const httpServer = createServer(app)
-const io = new Server(httpServer, {
-  cors:{
-    origin: "https://example.com",
-    methods: ['GET', 'POST']
-  }
-})
-
-io.on('connection', (socket) => {
-  console.log('SOCKET.IO: CONNECTED');
-  socket.on('disconnect', () => {
-    console.log('DISCONNECTED');
-  });
-})
+import { httpServer } from "./socket_io";
 
 httpServer.listen(4000)
