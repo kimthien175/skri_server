@@ -1,16 +1,15 @@
-import express = require('express')
-import { getNews } from "./mongo"
-var cors = require('cors')
+import express from 'express'
+import { getLastestNews, getLastestRoomSettings } from "./mongo.js"
+import cors from 'cors'
 
 const app = express()
 app.use(cors())
 
 app.get('/', (req, res) => {
-    res.send('Hello Worldd! he')
+    res.send('Hel')
 })
 app.get('/news', async function (req, res) {
-    var lastestNews = await getNews()
-    res.send(lastestNews)
+    res.send(await getLastestNews())
 })
 
 export { app }

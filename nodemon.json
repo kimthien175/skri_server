@@ -1,5 +1,7 @@
 {
   "verbose": true,
-  "ignore": [],
-  "watch": ["src/**/*.ts"]
+  "ignore": ["dist"],
+  "exec": "npm run dev",
+  "watch": ["src"],
+  "ext":"ts"
 }

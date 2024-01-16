@@ -1,4 +1,5 @@
-const { MongoClient, ServerApiVersion } = require("mongodb")
+import cryptoRandomString from 'crypto-random-string'
+import { MongoClient, ServerApiVersion } from "mongodb"
 const uri = "mongodb://mongo:27017/"
 const mongoClient = new MongoClient(uri, {
     serverApi: {
@@ -8,22 +9,49 @@ const mongoClient = new MongoClient(uri, {
     }
 })
 
+async function db() {
+    return (await mongoClient.connect()).db('skribbl');
+}
 
-export async function getNews(): Promise<JSON>{
-    var result = Object({})
-    try{
-        await mongoClient.connect()
-        var cursor =  mongoClient.db("skribbl").collection('news').find({}).sort({ _id: -1 }).limit(1)
+export async function getLastestNews() {
+    try {
+        var cursor = (await db()).collection('news').find({}).sort({ _id: -1 }).limit(1)
         var doc = await cursor.next()
-        if (doc){
-            return doc.base64
+        if (doc) {
+            return doc
         } else {
-            throw new Error('Can not find document')
+            throw new Error('Can not find any news')
         }
-    } catch (e){
-        console.log('ERROR');
-        console.log(e);
+    } finally {
+        await mongoClient.close()
     }
-    await mongoClient.close()
-    return result
+}
+
+export async function getLastestRoomSettings() {
+    try {
+        var cursor = (await db()).collection('settings').find({}).sort({ _id: -1 }).limit(1)
+        var doc = await cursor.next()
+        if (doc) {
+            return doc
+        } else {
+            throw new Error('Can not find any room settings')
+        }
+    } finally {
+        await mongoClient.close()
+    }
+}
+
+const codeLength = 4; // code including numberic chars or lowercase alphabet chars or both
+
+export async function initRoom(ownerName: String) {
+    try {
+        var result = (await db()).collection('privateRooms')
+            .insertOne({
+                ownerName,
+                code: cryptoRandomString({ length: codeLength, type: 'alphanumeric' }).toLowerCase()
+            })
+
+    } finally {
+        await mongoClient.close()
+    }
 }

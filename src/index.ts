@@ -1,3 +1,5 @@
-import { httpServer } from "./socket_io";
+import { httpServer } from "./socket_io.js";
 
-httpServer.listen(4000)
+httpServer.listen(4000,()=>{
+    console.log('dkm how aboutttt');
+})
