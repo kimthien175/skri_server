@@ -1,23 +1,13 @@
-interface DBRoomOptionsItemMinMax {
-    min: number;
-    max: number;
+interface ResponseCreatedRoom {
+    success: boolean;
+    data: CreatedRoomData | object
 }
 
-interface DBRoomOptionsItemList<T> {
-    list: Array<T>
-}
-
-interface DBRoomSettings {
-    players: number;
-    language: string;
-    drawtime: number;
-    rounds: number;
-    word_mode: string;
-    word_count: number;
-    hints: number,
-    use_custom_words_only: boolean,
-
-    custom_words?: Array<string>
+interface CreatedRoomData {
+    ownerName?: string
+    code: string
+    settings: DBRoomSettingsDocument
+    message: HostingMessage
 }
 
 interface DBRoomSettingsDocument extends Document {
@@ -47,13 +37,11 @@ interface DBRoomSettingsDocument extends Document {
     }
 }
 
-interface SucceededCreatedRoomData {
-    ownerName?: string;
-    code: string;
-    settings: DBRoomSettingsDocument;
+interface DBRoomOptionsItemMinMax {
+    min: number;
+    max: number;
 }
 
-interface ResponseCreatedRoomData {
-    success: boolean;
-    data: SucceededCreatedRoomData | object
+interface DBRoomOptionsItemList<T> {
+    list: Array<T>
 }

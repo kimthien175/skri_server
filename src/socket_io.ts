@@ -1,7 +1,7 @@
 import { createServer } from 'http'
 import { Server } from "socket.io"
 import { app } from './api.js'
-import { registerInitPrivateRoom } from './event_handlers/init_private_room.js'
+import { registerInitPrivateRoom } from './event_handlers/init_private_room/init_private_room.js'
 
 const httpServer = createServer(app)
 const io = new Server(httpServer, {

@@ -1,6 +1,6 @@
 import { Socket } from 'socket.io';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
-import { db, getLastestRoomSettings, mongoClient } from '../mongo.js'
+import { db, getLastestRoomSettings, mongoClient } from '../../mongo.js'
 import cryptoRandomString from 'crypto-random-string'
 import { InsertOneResult } from 'mongodb'
 
@@ -12,10 +12,10 @@ function randomName(): string {
 }
 
 /** init room: modify owner.isOwner = true, init room then output room code*/
-async function initRoom(owner: Player, defaultSettings: DBRoomSettingsDocument["default"]) {
+async function initRoom(owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: Message) {
     try {
         owner.isOwner = true
-        var roomCode = await insertRoomCode(codeLength, owner, defaultSettings)
+        var roomCode = await insertRoomCode(codeLength, owner, defaultSettings, message)
         return roomCode
     } catch (e) {
         console.log('initRoom: MONGODB ERROR')
@@ -28,7 +28,7 @@ async function initRoom(owner: Player, defaultSettings: DBRoomSettingsDocument["
 }
 
 /** insert room code without closing mongodb */
-async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSettings: DBRoomSettingsDocument["default"]): Promise<string> {
+async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: Message): Promise<string> {
     console.log(owner.name);
     var roomCode = cryptoRandomString({ length: codeLength, type: "alphanumeric" }).toLowerCase()
     return await new Promise<string>(async (resolve, reject) =>
@@ -37,7 +37,8 @@ async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSett
                 players: [owner],
                 code: roomCode,
                 status: 'waiting',
-                settings: defaultSettings
+                settings: defaultSettings,
+                messages: [message]
             }).then((value: InsertOneResult<Document>) => {
                 console.log(`ROOM OWNER: ${owner.name}`);
                 console.log(`DONE INSERTING ROOM CODE: ${roomCode}`)
@@ -47,7 +48,7 @@ async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSett
                 if (reason.code == 11000) {
                     // redo
                     console.log(`ROOM CODE COLLISION, TRY ADDING AGAIN: ${roomCode}`)
-                    var newRoomCode = await insertRoomCode(roomCodeLength + 1, owner, defaultSettings)
+                    var newRoomCode = await insertRoomCode(roomCodeLength + 1, owner, defaultSettings, message)
                     resolve(newRoomCode)
                     return
                 }
@@ -60,25 +61,21 @@ async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSett
 
 export function registerInitPrivateRoom(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) {
     socket.on('init_private_room', async function (player: Player, callback) {
-        var result: ResponseCreatedRoomData = Object({})
+        var result: ResponseCreatedRoom = Object({})
         try {
-            var success: SucceededCreatedRoomData = Object({})
+            var success: CreatedRoomData = Object({})
 
             success.settings = await getLastestRoomSettings();
 
-            // init ownerName if empty
-            if (player.name == '') {
+            // process playername here
+            if (player.name ==''){
                 player.name = randomName()
                 success.ownerName = player.name
-
-                // ownerName stays in result
-                // init room in db
-                success.code = await initRoom(player, success.settings.default)
-            } else {
-                // ownerName in roomOwnerName parameter
-                // init room in db
-                success.code = await initRoom(player, success.settings.default)
             }
+
+            var message: HostingMessage = { type: 'hosting', player_name: player.name, timestamp: new Date()}
+
+            success.code = await initRoom(player, success.settings.default, message)
 
             result.success = true
             result.data = success
