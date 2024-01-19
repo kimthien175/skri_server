@@ -1,7 +1,8 @@
 import { createServer } from 'http'
 import { Server } from "socket.io"
 import { app } from './api.js'
-import { registerInitPrivateRoom } from './event_handlers/init_private_room/init_private_room.js'
+import { registerInitPrivateRoom } from './event_handlers/private_room/init/init.js'
+import { registerListenChatMessages } from './event_handlers/private_room/listen_guess/listen_guess.js'
 
 const httpServer = createServer(app)
 const io = new Server(httpServer, {
@@ -19,6 +20,7 @@ io.on('connection', (socket) => {
 
     // listen to init_room request
     registerInitPrivateRoom(socket)
+    registerListenChatMessages(socket)
 })
 
 

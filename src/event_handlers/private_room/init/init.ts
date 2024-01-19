@@ -1,6 +1,6 @@
 import { Socket } from 'socket.io';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
-import { db, getLastestRoomSettings, mongoClient } from '../../mongo.js'
+import { db, getLastestRoomSettings, mongoClient } from '../../../mongo.js'
 import cryptoRandomString from 'crypto-random-string'
 import { InsertOneResult } from 'mongodb'
 
@@ -12,7 +12,7 @@ function randomName(): string {
 }
 
 /** init room: modify owner.isOwner = true, init room then output room code*/
-async function initRoom(owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: Message) {
+async function initRoom(owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: MessageFromServer) {
     try {
         owner.isOwner = true
         var roomCode = await insertRoomCode(codeLength, owner, defaultSettings, message)
@@ -28,7 +28,7 @@ async function initRoom(owner: Player, defaultSettings: DBRoomSettingsDocument["
 }
 
 /** insert room code without closing mongodb */
-async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: Message): Promise<string> {
+async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: MessageFromServer): Promise<string> {
     console.log(owner.name);
     var roomCode = cryptoRandomString({ length: codeLength, type: "alphanumeric" }).toLowerCase()
     return await new Promise<string>(async (resolve, reject) =>
@@ -73,7 +73,8 @@ export function registerInitPrivateRoom(socket: Socket<DefaultEventsMap, Default
                 success.ownerName = player.name
             }
 
-            var message: HostingMessage = { type: 'hosting', player_name: player.name, timestamp: new Date()}
+            var message: HostingMessageFromServer = { type: 'hosting', player_name: player.name, timestamp: new Date()}
+            success.message = message
 
             success.code = await initRoom(player, success.settings.default, message)
 

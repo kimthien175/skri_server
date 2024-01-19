@@ -1,27 +1,27 @@
-interface Message {
+interface MessageFromServer {
     type: string
     timestamp: Date
 }
 
-interface HostingMessage extends Message {
+interface HostingMessageFromServer extends MessageFromServer {
     type: 'hosting'
     player_name: string,
 }
 
-interface DrawingMessage extends Message {
+interface DrawingMessageFromServer extends MessageFromServer {
     type: 'drawing'
     player_name: string
 
 }
 
-interface GuessMessage extends Message {
+interface GuessMessageFromSever extends MessageFromServer {
     type: 'guess'
-    playerName: string
+    player_name: string
     guess: string
 
 }
 
-interface CorrectGuessMessage extends Message{
+interface CorrectGuessMessageFromServer extends MessageFromServer{
     type: 'correct_guess'
     player_name: string
 
