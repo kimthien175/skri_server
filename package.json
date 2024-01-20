@@ -5,9 +5,9 @@
   "main": "src/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
     "start": "npm run build && node dist/index.js",
-    "build": "rm -rf dist && tsc",
-    "dev": "nodemon --exec npm run start"
+    "dev": "nodemon --legacy-watch --watch src --ext ts --exec npm run start --verbose"
   },
   "keywords": [],
   "author": "",

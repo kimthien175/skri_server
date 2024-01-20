@@ -8,7 +8,6 @@ services:
       target: base
     volumes:
       - ./src:/app/src
-      - ./nodemon.json:/app/nodemon.json
     container_name: skribbl-server
     expose:
       - '4000'

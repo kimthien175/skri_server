@@ -53,6 +53,7 @@ export function registerJoinPrivateRoom(socket: Socket<DefaultEventsMap, Default
                     timestamp: new Date()
                 }
             }
+            successJoinRoom.room.messages.push(emit.message)
 
             socket.to(arg.code).emit('new_player_joined', emit)
             // store message to db

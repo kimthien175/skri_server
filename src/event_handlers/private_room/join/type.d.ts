@@ -9,7 +9,7 @@ interface SuccessJoinRoom {
 }
 
 interface JoinRoomData{
-    lastRoundStartedAt?: Timestamp
+    currentRoundStartedAt?: Timestamp
     currentRound?: number
     words?: Array<string>
 
