@@ -1,0 +1,832 @@
+[{
+  "_id": {
+    "$oid": "65ab081735d50c7db0c218e9"
+  },
+  "players": {
+    "0": {
+      "name": "random name",
+      "avatar": {
+        "color": 25,
+        "eyes": 43,
+        "mouth": 47
+      },
+      "index": "0",
+      "isOwner": true
+    }
+  },
+  "code": "2raj",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_index": "0",
+      "timestamp": {
+        "$date": "2024-01-19T23:39:03.631Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab08c6fc7068c0fafc8e90"
+  },
+  "players": {
+    "0": {
+      "name": "random name",
+      "avatar": {
+        "color": 23,
+        "eyes": 4,
+        "mouth": 29
+      },
+      "index": "0",
+      "isOwner": true
+    }
+  },
+  "code": "5l7g",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_index": "0",
+      "timestamp": {
+        "$date": "2024-01-19T23:41:58.031Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab095ffc7068c0fafc8e91"
+  },
+  "players": {
+    "0": {
+      "name": "random name",
+      "avatar": {
+        "color": 25,
+        "eyes": 17,
+        "mouth": 25
+      },
+      "index": "0",
+      "isOwner": true
+    }
+  },
+  "code": "jzi7",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_index": "0",
+      "timestamp": {
+        "$date": "2024-01-19T23:44:31.077Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab09d5fc7068c0fafc8e92"
+  },
+  "players": {
+    "0": {
+      "name": "random name",
+      "avatar": {
+        "color": 14,
+        "eyes": 31,
+        "mouth": 33
+      },
+      "index": "0",
+      "isOwner": true
+    }
+  },
+  "code": "hmxb",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_index": "0",
+      "timestamp": {
+        "$date": "2024-01-19T23:46:29.925Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab0a9bfc7068c0fafc8e93"
+  },
+  "players": {
+    "0": {
+      "name": "random name",
+      "avatar": {
+        "color": 14,
+        "eyes": 33,
+        "mouth": 17
+      },
+      "index": "0",
+      "isOwner": true
+    }
+  },
+  "code": "4iuc",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_index": "0",
+      "timestamp": {
+        "$date": "2024-01-19T23:49:47.754Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab0b13fc7068c0fafc8e94"
+  },
+  "players": {
+    "0": {
+      "name": "random name",
+      "avatar": {
+        "color": 8,
+        "eyes": 37,
+        "mouth": 22
+      },
+      "index": "0",
+      "isOwner": true
+    }
+  },
+  "code": "qo1y",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_index": "0",
+      "timestamp": {
+        "$date": "2024-01-19T23:51:47.344Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab0efdfc7068c0fafc8e95"
+  },
+  "players": {
+    "0": {
+      "name": "random name",
+      "avatar": {
+        "color": 1,
+        "eyes": 24,
+        "mouth": 28
+      },
+      "index": "0",
+      "isOwner": true
+    }
+  },
+  "code": "e26t",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_index": "0",
+      "timestamp": {
+        "$date": "2024-01-20T00:08:29.900Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab0f78fc7068c0fafc8e96"
+  },
+  "players": {
+    "0": {
+      "name": "random name",
+      "avatar": {
+        "color": 10,
+        "eyes": 42,
+        "mouth": 45
+      },
+      "index": "0",
+      "isOwner": true
+    }
+  },
+  "code": "upzk",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_index": "0",
+      "timestamp": {
+        "$date": "2024-01-20T00:10:32.022Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab0ffafc7068c0fafc8e97"
+  },
+  "players": {
+    "0": {
+      "name": "random name",
+      "avatar": {
+        "color": 1,
+        "eyes": 35,
+        "mouth": 3
+      },
+      "index": "0",
+      "isOwner": true
+    }
+  },
+  "code": "cnlq",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_index": "0",
+      "timestamp": {
+        "$date": "2024-01-20T00:12:42.801Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab1051fc7068c0fafc8e98"
+  },
+  "players": {
+    "0": {
+      "name": "random name",
+      "avatar": {
+        "color": 19,
+        "eyes": 26,
+        "mouth": 28
+      },
+      "index": "0",
+      "isOwner": true
+    }
+  },
+  "code": "y8cr",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_index": "0",
+      "timestamp": {
+        "$date": "2024-01-20T00:14:09.853Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab1172fc7068c0fafc8e99"
+  },
+  "players": {
+    "0": {
+      "name": "random name",
+      "avatar": {
+        "color": 15,
+        "eyes": 25,
+        "mouth": 15
+      },
+      "index": "0",
+      "isOwner": true
+    }
+  },
+  "code": "czu9",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_index": "0",
+      "timestamp": {
+        "$date": "2024-01-20T00:18:58.192Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab15125677011c0de7ac81"
+  },
+  "players": {
+    "0": {
+      "name": "random name",
+      "avatar": {
+        "color": 1,
+        "eyes": 30,
+        "mouth": 43
+      },
+      "index": "0",
+      "isOwner": true
+    }
+  },
+  "code": "bfy8",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_index": "0",
+      "timestamp": {
+        "$date": "2024-01-20T00:34:26.115Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab15735677011c0de7ac82"
+  },
+  "players": {
+    "0": {
+      "name": "random name",
+      "avatar": {
+        "color": 11,
+        "eyes": 27,
+        "mouth": 28
+      },
+      "index": "0",
+      "isOwner": true
+    }
+  },
+  "code": "e2pv",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_index": "0",
+      "timestamp": {
+        "$date": "2024-01-20T00:36:03.710Z"
+      }
+    }
+  ]
+},
+{
+  "0": {
+    "data": "myobj"
+  },
+  "_id": {
+    "$oid": "65ab2f210d8d2702cf3defa8"
+  },
+  "players": {
+    "0": "myobj"
+  },
+  "code": "itco",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_index": "0",
+      "timestamp": {
+        "$date": "2024-01-20T02:25:37.951Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab41050bc46dd7149b3449"
+  },
+  "players": [
+    {
+      "name": "random name",
+      "avatar": {
+        "color": 8,
+        "eyes": 30,
+        "mouth": 10
+      },
+      "id": "iZvtAye8IieWptReAAAB",
+      "isOwner": true
+    }
+  ],
+  "code": "d3me",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_id": "iZvtAye8IieWptReAAAB",
+      "timestamp": {
+        "$date": "2024-01-20T03:41:57.784Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab418daef40c77301a5969"
+  },
+  "players": [
+    {
+      "name": "random name",
+      "avatar": {
+        "color": 18,
+        "eyes": 35,
+        "mouth": 34
+      },
+      "id": "MDJoHNC2p6uoKmRpAAAB",
+      "isOwner": true
+    }
+  ],
+  "code": "9mly",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_id": "MDJoHNC2p6uoKmRpAAAB",
+      "timestamp": {
+        "$date": "2024-01-20T03:44:13.779Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab4218aef40c77301a596a"
+  },
+  "players": [
+    {
+      "name": "random name",
+      "avatar": {
+        "color": 17,
+        "eyes": 13,
+        "mouth": 18
+      },
+      "id": "rmazqkuWMwaMNknEAAAD",
+      "isOwner": true
+    }
+  ],
+  "code": "ev6x",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_id": "rmazqkuWMwaMNknEAAAD",
+      "timestamp": {
+        "$date": "2024-01-20T03:46:32.485Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab42ceaef40c77301a596b"
+  },
+  "players": [
+    {
+      "name": "random name",
+      "avatar": {
+        "color": 23,
+        "eyes": 17,
+        "mouth": 7
+      },
+      "id": "SKHuTTablQK6L455AAAF",
+      "isOwner": true
+    }
+  ],
+  "code": "tloj",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_id": "SKHuTTablQK6L455AAAF",
+      "timestamp": {
+        "$date": "2024-01-20T03:49:34.713Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab43d3aef40c77301a596c"
+  },
+  "players": [
+    {
+      "name": "random name",
+      "avatar": {
+        "color": 2,
+        "eyes": 4,
+        "mouth": 29
+      },
+      "id": "4cYYKWpQHlh9JZFxAAAH",
+      "isOwner": true
+    }
+  ],
+  "code": "tgm0",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_id": "4cYYKWpQHlh9JZFxAAAH",
+      "timestamp": {
+        "$date": "2024-01-20T03:53:55.587Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab450ebb12da8195ae697c"
+  },
+  "players": [
+    {
+      "name": "random name",
+      "avatar": {
+        "color": 1,
+        "eyes": 55,
+        "mouth": 46
+      },
+      "id": "b-lR7sL_pGop7OGpAAAB",
+      "isOwner": true
+    }
+  ],
+  "code": "xrqf",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_id": "b-lR7sL_pGop7OGpAAAB",
+      "timestamp": {
+        "$date": "2024-01-20T03:59:10.654Z"
+      }
+    },
+    {
+      "type": "guess",
+      "player_id": "b-lR7sL_pGop7OGpAAAB",
+      "guess": "a",
+      "timestamp": {
+        "$date": "2024-01-20T03:59:14.225Z"
+      }
+    },
+    {
+      "type": "guess",
+      "player_id": "b-lR7sL_pGop7OGpAAAB",
+      "guess": "n",
+      "timestamp": {
+        "$date": "2024-01-20T03:59:16.985Z"
+      }
+    },
+    {
+      "type": "guess",
+      "player_id": "b-lR7sL_pGop7OGpAAAB",
+      "guess": "c",
+      "timestamp": {
+        "$date": "2024-01-20T03:59:18.694Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab45c6bb12da8195ae697d"
+  },
+  "players": [
+    {
+      "name": "random name",
+      "avatar": {
+        "color": 0,
+        "eyes": 42,
+        "mouth": 35
+      },
+      "id": "fVvrSf3RQ6C6MuhUAAAD",
+      "isOwner": true
+    }
+  ],
+  "code": "ycuh",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_id": "fVvrSf3RQ6C6MuhUAAAD",
+      "timestamp": {
+        "$date": "2024-01-20T04:02:14.470Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "65ab4634bb12da8195ae697e"
+  },
+  "players": [
+    {
+      "name": "random name",
+      "avatar": {
+        "color": 9,
+        "eyes": 11,
+        "mouth": 7
+      },
+      "id": "EChEFO9VEglENSkcAAAF",
+      "isOwner": true
+    }
+  ],
+  "code": "qdmy",
+  "status": "waiting",
+  "settings": {
+    "players": 8,
+    "language": "English",
+    "drawtime": 80,
+    "rounds": 3,
+    "word_mode": "Normal",
+    "word_count": 3,
+    "hints": 2
+  },
+  "messages": [
+    {
+      "type": "hosting",
+      "player_id": "EChEFO9VEglENSkcAAAF",
+      "timestamp": {
+        "$date": "2024-01-20T04:04:04.070Z"
+      }
+    }
+  ]
+}]
