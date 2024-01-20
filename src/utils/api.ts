@@ -1,5 +1,5 @@
 import express from 'express'
-import { getLastestNews } from "./mongo.js"
+import { getLastestNews } from "./db/mongo.js"
 import cors from 'cors'
 
 const app = express()

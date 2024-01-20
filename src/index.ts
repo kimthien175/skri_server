@@ -1,4 +1,4 @@
-import { httpServer } from "./socket_io.js";
+import { httpServer } from "./utils/socket_io.js";
 
 httpServer.listen(4000,()=>{
     console.log('hehehe');

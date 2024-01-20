@@ -4,7 +4,8 @@ interface ResponseCreatedRoom {
 }
 
 interface CreatedRoomData {
-    ownerName?: string
+    ownerName?: string,
+    player_id: string
     code: string
     settings: DBRoomSettingsDocument
     message: HostingMessage

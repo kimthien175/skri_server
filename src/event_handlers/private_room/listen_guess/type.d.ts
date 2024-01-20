@@ -1,4 +1,4 @@
-interface GuessMessageFromClient{
-    player: Player
-    guess: string
+interface GuessMessageFromClient {
+    guess: string,
+    room: string
 }

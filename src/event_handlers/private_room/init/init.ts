@@ -1,15 +1,13 @@
 import { Socket } from 'socket.io';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
-import { db, getLastestRoomSettings, mongoClient } from '../../../mongo.js'
+import { db, getLastestRoomSettings, mongoClient } from '../../../utils/db/mongo.js'
 import cryptoRandomString from 'crypto-random-string'
 import { InsertOneResult } from 'mongodb'
+import { randomName } from '../../../utils/random_name.js';
+import { privateRoomCollection } from '../../../utils/db/collection.js';
 
 const codeLength = 4; // code including numberic chars or lowercase alphabet chars or both
 
-// TODO: RANDOM NAME
-function randomName(): string {
-    return 'random name';
-}
 
 /** init room: modify owner.isOwner = true, init room then output room code*/
 async function initRoom(owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: MessageFromServer) {
@@ -32,7 +30,7 @@ async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSett
     console.log(owner.name);
     var roomCode = cryptoRandomString({ length: codeLength, type: "alphanumeric" }).toLowerCase()
     return await new Promise<string>(async (resolve, reject) =>
-        (await db()).collection('privateRooms')
+        (await privateRoomCollection())
             .insertOne({
                 players: [owner],
                 code: roomCode,
@@ -67,13 +65,16 @@ export function registerInitPrivateRoom(socket: Socket<DefaultEventsMap, Default
 
             success.settings = await getLastestRoomSettings();
 
-            // process playername here
-            if (player.name ==''){
+            // modify playername here
+            if (player.name == '') {
                 player.name = randomName()
                 success.ownerName = player.name
             }
+            // modify player id
+            player.id = socket.id
+            success.player_id = player.id
 
-            var message: HostingMessageFromServer = { type: 'hosting', player_name: player.name, timestamp: new Date()}
+            var message: HostingMessageFromServer = { type: 'hosting', player_id: player.id, timestamp: new Date() }
             success.message = message
 
             success.code = await initRoom(player, success.settings.default, message)

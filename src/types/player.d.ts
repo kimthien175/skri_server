@@ -6,4 +6,5 @@ interface Player {
         mouth: number;
     },
     isOwner?: boolean;
+    id: string
 }
