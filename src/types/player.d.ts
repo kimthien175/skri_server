@@ -1,4 +1,5 @@
 interface Player {
+    id: string;
     name: string;
     avatar: {
         color: number;
@@ -6,5 +7,5 @@ interface Player {
         mouth: number;
     },
     isOwner?: boolean;
-    id: string
+    point?: number
 }

@@ -1,29 +1,13 @@
 import { Socket } from 'socket.io';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
-import { db, getLastestRoomSettings, mongoClient } from '../../../utils/db/mongo.js'
+import { getLastestRoomSettingsWithoutClosingDb, mongoClient } from '../../../utils/db/mongo.js'
 import cryptoRandomString from 'crypto-random-string'
-import { InsertOneResult } from 'mongodb'
+import { InsertOneResult, OptionalId } from 'mongodb'
 import { randomName } from '../../../utils/random_name.js';
 import { privateRoomCollection } from '../../../utils/db/collection.js';
 
 const codeLength = 4; // code including numberic chars or lowercase alphabet chars or both
 
-
-/** init room: modify owner.isOwner = true, init room then output room code*/
-async function initRoom(owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: MessageFromServer) {
-    try {
-        owner.isOwner = true
-        var roomCode = await insertRoomCode(codeLength, owner, defaultSettings, message)
-        return roomCode
-    } catch (e) {
-        console.log('initRoom: MONGODB ERROR')
-        console.log(e)
-        throw e
-    }
-    finally {
-        await mongoClient.close()
-    }
-}
 
 /** insert room code without closing mongodb */
 async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: MessageFromServer): Promise<string> {
@@ -31,20 +15,22 @@ async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSett
     var roomCode = cryptoRandomString({ length: codeLength, type: "alphanumeric" }).toLowerCase()
     return await new Promise<string>(async (resolve, reject) =>
         (await privateRoomCollection())
-            .insertOne({
-                players: [owner],
-                code: roomCode,
-                status: 'waiting',
-                settings: defaultSettings,
-                messages: [message]
-            }).then((value: InsertOneResult<Document>) => {
+            .insertOne(
+                {
+                    players: [owner],
+                    code: roomCode,
+                    status: 'waiting',
+                    settings: defaultSettings,
+                    messages: [message]
+                } as unknown as OptionalId<Document>
+            ).then((value: InsertOneResult<Document>) => {
                 console.log(`ROOM OWNER: ${owner.name}`);
                 console.log(`DONE INSERTING ROOM CODE: ${roomCode}`)
                 resolve(roomCode)
             })
             .catch(async (reason: any) => {
                 if (reason.code == 11000) {
-                    // redo
+                    // do it again
                     console.log(`ROOM CODE COLLISION, TRY ADDING AGAIN: ${roomCode}`)
                     var newRoomCode = await insertRoomCode(roomCodeLength + 1, owner, defaultSettings, message)
                     resolve(newRoomCode)
@@ -57,13 +43,26 @@ async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSett
     )
 }
 
+/** init room: modify owner.isOwner = true, init room then output room code*/
+async function initRoomWithoutClosingDb(owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: MessageFromServer) {
+    try {
+        owner.isOwner = true
+        var roomCode = await insertRoomCode(codeLength, owner, defaultSettings, message)
+        return roomCode
+    } catch (e) {
+        console.log('initRoom: MONGODB ERROR')
+        console.log(e)
+        throw e
+    }
+}
+
 export function registerInitPrivateRoom(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) {
     socket.on('init_private_room', async function (player: Player, callback) {
         var result: ResponseCreatedRoom = Object({})
         try {
-            var success: CreatedRoomData = Object({})
+            var success: CreatedRoom = Object({})
 
-            success.settings = await getLastestRoomSettings();
+            success.settings = await getLastestRoomSettingsWithoutClosingDb();
 
             // modify playername here
             if (player.name == '') {
@@ -77,7 +76,7 @@ export function registerInitPrivateRoom(socket: Socket<DefaultEventsMap, Default
             var message: HostingMessageFromServer = { type: 'hosting', player_id: player.id, timestamp: new Date() }
             success.message = message
 
-            success.code = await initRoom(player, success.settings.default, message)
+            success.code = await initRoomWithoutClosingDb(player, success.settings.default, message)
 
             result.success = true
             result.data = success
@@ -88,6 +87,8 @@ export function registerInitPrivateRoom(socket: Socket<DefaultEventsMap, Default
             console.log('INIT ROOM ERROR')
             result.success = false
             result.data = e
+        } finally {
+            mongoClient.close()
         }
 
         callback(result)

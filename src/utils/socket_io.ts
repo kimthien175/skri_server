@@ -4,7 +4,8 @@ import { app } from './api.js'
 import { registerInitPrivateRoom } from '../event_handlers/private_room/init/init.js'
 import { registerListenChatMessages } from '../event_handlers/private_room/listen_guess/listen_guess.js'
 import { registerJoinPrivateRoom } from '../event_handlers/private_room/join/join.js'
-import { registerDeleteRoom } from '../event_handlers/delete_room/delete_room.js'
+import { registerDeleteRoomOnLeave } from '../event_handlers/delete_room_on_leave/delete_room.js'
+import { registerLeaveRoom } from '../event_handlers/player_leave/player_leave.js'
 
 const httpServer = createServer(app)
 const io = new Server(httpServer, {
@@ -17,17 +18,16 @@ const io = new Server(httpServer, {
 io.on('connection', (socket) => {
     console.log('SOCKET.IO: CONNECTED')
     socket.on('disconnect', () => {
-        // player leave
-        io.emit('player_leave', socket.id)
-        console.log('PLAYER LEAVE'); 
-        // change db
+        console.log(`player ${socket.id} disconnected`);
     })
 
     // listen to init_room request
     registerInitPrivateRoom(socket)
     registerListenChatMessages(socket)
     registerJoinPrivateRoom(socket)
-    registerDeleteRoom(socket)
+    registerDeleteRoomOnLeave(socket)
+
+    registerLeaveRoom(socket)
 })
 
 

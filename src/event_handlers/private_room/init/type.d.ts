@@ -1,9 +1,9 @@
 interface ResponseCreatedRoom {
     success: boolean;
-    data: CreatedRoomData | object
+    data: CreatedRoom | object
 }
 
-interface CreatedRoomData {
+interface CreatedRoom {
     ownerName?: string,
     player_id: string
     code: string

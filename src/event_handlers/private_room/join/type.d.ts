@@ -1,24 +1,13 @@
 interface ResponseJoinRoom{
     success: boolean
-    data: SuccessJoinRoom | object
+    data: RoomWithNewPlayer | object
 }
 
-interface SuccessJoinRoom {
+interface RoomWithNewPlayer {
     player: Player
-    room: JoinRoomData
+    room: Room
 }
 
-interface JoinRoomData{
-    currentRoundStartedAt?: Timestamp
-    currentRound?: number
-    words?: Array<string>
-
-    messages: Array<MessageFromServer>
-    settings: DBRoomSettingsDocument["default"]
-    status: string
-    code: string
-    players: Array<Player>
-}
 
 interface RequestJoinRoom{
     player: Player

@@ -24,7 +24,7 @@ async function getLastestNews() {
     }
 }
 
-async function getLastestRoomSettings(): Promise<DBRoomSettingsDocument> {
+async function getLastestRoomSettingsWithoutClosingDb(): Promise<DBRoomSettingsDocument> {
     try {
         var cursor = (await db()).collection('settings').find<Document>({}).sort({ _id: -1 }).limit(1)
         var doc = await cursor.next()
@@ -38,4 +38,4 @@ async function getLastestRoomSettings(): Promise<DBRoomSettingsDocument> {
     }
 }
 
-export { getLastestNews, getLastestRoomSettings , db, mongoClient}
+export { getLastestNews, getLastestRoomSettingsWithoutClosingDb , db, mongoClient}
