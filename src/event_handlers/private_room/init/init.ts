@@ -1,10 +1,9 @@
-import { Socket } from 'socket.io';
-import { DefaultEventsMap } from 'socket.io/dist/typed-events';
 import { getLastestRoomSettingsWithoutClosingDb, mongoClient } from '../../../utils/db/mongo.js'
 import cryptoRandomString from 'crypto-random-string'
 import { InsertOneResult, OptionalId } from 'mongodb'
 import { randomName } from '../../../utils/random_name.js';
 import { privateRoomCollection } from '../../../utils/db/collection.js';
+import { SocketPackage } from '../../../types/socket_package.js';
 
 const codeLength = 4; // code including numberic chars or lowercase alphabet chars or both
 
@@ -56,8 +55,9 @@ async function initRoomWithoutClosingDb(owner: Player, defaultSettings: DBRoomSe
     }
 }
 
-export function registerInitPrivateRoom(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) {
-    socket.on('init_private_room', async function (player: Player, callback) {
+export function registerInitPrivateRoom(socketPackage: SocketPackage) {
+    socketPackage.socket.on('init_private_room', async function (player: Player, callback) {
+        var socket = socketPackage.socket
         var result: ResponseCreatedRoom = Object({})
         try {
             var success: CreatedRoom = Object({})
@@ -77,22 +77,20 @@ export function registerInitPrivateRoom(socket: Socket<DefaultEventsMap, Default
             success.message = message
 
             success.code = await initRoomWithoutClosingDb(player, success.settings.default, message)
+            socketPackage.roomCode = success.code
 
             result.success = true
             result.data = success
 
             // join room
-            socket.join(success.code)
+            socket.join(socketPackage.roomCode)
         } catch (e: any) {
             console.log('INIT ROOM ERROR')
             result.success = false
             result.data = e
         } finally {
+            callback(result)
             mongoClient.close()
         }
-
-        callback(result)
     })
 }
-
-

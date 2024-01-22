@@ -1,7 +1,6 @@
-import { Socket } from "socket.io"
-import { DefaultEventsMap } from "socket.io/dist/typed-events"
 import { randomName } from "../../utils/random_name.js"
 import { Collection, PushOperator } from "mongodb"
+import { SocketPackage } from "../../types/socket_package.js"
 
 /**
  * Edit player id to socket id
@@ -14,19 +13,20 @@ import { Collection, PushOperator } from "mongodb"
  * 
  * @returns lastest room data
  */
-export async function addPlayerToExistingRoomWithoutClosingDb(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
+export async function addPlayerToExistingRoomWithoutClosingDb(socketPackage: SocketPackage,
     collection: Collection<Document>,
     roomCode: string,
     player: Player,): Promise<RoomWithNewPlayer> {
 
+    var socket = socketPackage.socket
     player.id = socket.id
 
     if (player.name == '') {
         player.name = randomName()
     }
 
-    var message = {
-        type: 'player_joined',
+    var message: PlayerJoinMessageFromServer = {
+        type: 'player_join',
         player_id: socket.id,
         timestamp: new Date()
     }
@@ -43,16 +43,19 @@ export async function addPlayerToExistingRoomWithoutClosingDb(socket: Socket<Def
         update,
         { returnDocument: 'after' }
     );
-    console.log(`Add player ${socket.id} and message to db`);
 
     if (foundRoom == null) {
-        throw new Error(`Can not find room with code ${roomCode}`)
+        throw new Error(`addPlayerToExistingRoomWithoutClosingDb: Can not find room with code ${roomCode}`)
     }
 
-    await socket.join(roomCode)
-    console.log(`Add player ${socket.id} to room ${roomCode}`);
+    console.log(`addPlayerToExistingRoomWithoutClosingDb: Add player ${socket.id} and message to db`);
 
-    socket.to(roomCode).emit("player_joined", {
+    await socket.join(roomCode)
+    socketPackage.roomCode = roomCode
+
+    console.log(`addPlayerToExistingRoomWithoutClosingDb: Add player ${socket.id} to room ${roomCode}`);
+
+    socket.to(roomCode).emit("player_join", {
         player,
         message
     });

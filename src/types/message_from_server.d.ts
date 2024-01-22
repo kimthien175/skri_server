@@ -26,18 +26,18 @@ interface CorrectGuessMessageFromServer extends MessageFromServer{
     player_id: string
 }
 
-interface NewPlayerMessageFromServer extends MessageFromServer{
-    type:'new_player',
+interface PlayerJoinMessageFromServer extends MessageFromServer{
+    type:'player_join',
     player_id: string
-}
-
-interface OwnerLeaveFromServer extends MessageFromServer{
-    type: 'owner_leave'
 }
 
 interface PlayerLeaveFromServer extends MessageFromServer{
     type: 'player_leave',
     player_id: string
+}
+
+interface HostLeaveFromServer extends MessageFromServer{
+    new_host_id: string
 }
 
 //type Message = HostingMessage | DrawingMessage | GuessMessage | CorrectGuessMessage
