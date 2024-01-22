@@ -7,6 +7,7 @@ import { SocketPackage } from './types/socket_package.js'
 import { registerInitPrivateRoom } from './private/init.js'
 import { onLeavingPrivateRoom } from './private/disconnect.js'
 import { registerJoinPrivateRoom } from './private/join.js'
+import { registerListenGuessMessages } from './events/player_guess.js'
 
 const httpServer = createServer(app)
 const io = new Server(httpServer, {
@@ -41,6 +42,7 @@ io.on('connection', (socket) => {
     registerInitPrivateRoom(socketPackage)
     // registerListenChatMessages(socketPackage)
     registerJoinPrivateRoom(socketPackage)
+    registerListenGuessMessages(socketPackage)
     // registerDeleteRoomOnLeave(socketPackage)
 
     //registerLeaveRoom(socketPackage)

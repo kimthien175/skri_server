@@ -53,6 +53,7 @@ export async function addPlayerToExistingRoomWithoutClosingDb(socketPackage: Soc
 
     await socket.join(roomCode)
     socketPackage.roomCode = roomCode
+    socketPackage.name = player.name
 
     console.log(`addPlayerToExistingRoomWithoutClosingDb: Add player ${socket.id} to room ${roomCode}`);
 

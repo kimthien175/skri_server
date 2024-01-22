@@ -12,4 +12,5 @@ export class SocketPackage {
     socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
     roomCode: string
     isOwner?: boolean
+    name?: string
 }

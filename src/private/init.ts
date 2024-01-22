@@ -81,6 +81,7 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
             
             success.code = await initRoomWithoutClosingDb(player, success.settings.default, message)
             socketPackage.roomCode = success.code
+            socketPackage.name = player.name
             socketPackage.isOwner = true
 
             result.success = true
