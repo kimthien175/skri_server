@@ -10,7 +10,7 @@ const codeLength = 4; // code including numberic chars or lowercase alphabet cha
 
 
 /** insert room code without closing mongodb */
-async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: ServerMessage): Promise<string> {
+async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: Message): Promise<string> {
     console.log(owner.name);
     var roomCode = cryptoRandomString({ length: codeLength, type: "alphanumeric" }).toLowerCase()
     return await new Promise<string>(async (resolve, reject) =>
@@ -44,7 +44,7 @@ async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSett
 }
 
 /** init room: modify owner.isOwner = true, init room then output room code*/
-async function initRoomWithoutClosingDb(owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: ServerMessage) {
+async function initRoomWithoutClosingDb(owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: Message) {
     try {
         owner.isOwner = true
         var roomCode = await insertRoomCode(codeLength, owner, defaultSettings, message)
@@ -75,12 +75,13 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
             success.player_id = player.id
 
 
-            var message: NewHostServerMessage = { type: 'new_host', player_id: player.id, timestamp: new Date() }
+            var message: NewHostMessage = { type: 'new_host', player_id: player.id, timestamp: new Date(), player_name: player.name }
             success.message = message
 
             
             success.code = await initRoomWithoutClosingDb(player, success.settings.default, message)
             socketPackage.roomCode = success.code
+            socketPackage.isOwner = true
 
             result.success = true
             result.data = success

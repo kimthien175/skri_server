@@ -25,9 +25,10 @@ export async function addPlayerToExistingRoomWithoutClosingDb(socketPackage: Soc
         player.name = randomName()
     }
 
-    var message: PlayerJoinMessageFromServer = {
+    var message: PlayerJoinMessage = {
         type: 'player_join',
         player_id: socket.id,
+        player_name: player.name,
         timestamp: new Date()
     }
 

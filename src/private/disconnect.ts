@@ -10,7 +10,7 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
     try {
         var collection = (await privateRoomCollection())
         var foundRoomDoc: WithId<Room> | null = await collection.findOne({ code: socketPkg.roomCode }) as WithId<Room> | null
-        if (foundRoomDoc == null){
+        if (foundRoomDoc == null) {
             console.log(`roomCode: ${socketPkg.roomCode}`);
             throw Error('onLeavingPrivateRoom: Unhandled usecase')
         }
@@ -27,12 +27,20 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
             return
         }
 
+        var playerName: string = '__'
+        for (var i = 0; i < foundRoomDoc.players.length; i++) {
+            if (foundRoomDoc.players[i].id == socketPkg.socket.id) {
+                playerName = foundRoomDoc.players[i].name;
+                break;
+            }
+        }
         // no need to delete room, player leave
         // prepare message for case
-        var playerLeaveMsg: PlayerServerMessage = {
+        var playerLeaveMsg: PlayerLeaveMessage = {
             type: 'player_leave',
             player_id: socketPkg.socket.id,
-            timestamp: new Date()
+            timestamp: new Date(),
+            player_name: playerName
         }
 
         if (socketPkg.isOwner) {
@@ -47,26 +55,24 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
 
             var newOwnerId = players[newOwnerIndex].id
 
-            var newHostMsg: NewHostServerMessage={
+            var newHostMsg: NewHostMessage = {
                 type: 'new_host',
                 player_id: newOwnerId,
-                timestamp: new Date()
+                timestamp: new Date(),
+                player_name: players[newOwnerIndex].name
             }
 
             await collection.updateOne({ code: socketPkg.roomCode },
                 {
-                    $push: {
-                        messages: [playerLeaveMsg, newHostMsg]
-                    },
-                    $pull: {
-                        players: { id: socketPkg.socket.id }
-                    },
-                    $set: { "players.$[e].isOwner": true }
+                    $push: { messages: [playerLeaveMsg, newHostMsg] },
+                    $pull: { players: { id: socketPkg.socket.id } }
                 },
-                {
-                    arrayFilters: [{ "e.id": newOwnerId }]
-                }
-            )
+            );
+
+            await collection.updateOne({ code: socketPkg.roomCode },
+                { $set: { "players.$[element].isOwner": true } },
+                { arrayFilters: [{ "element.id": newOwnerId }] }
+            );
             console.log(`onLeavingPrivateRoom: Pass owner ship to player: ${newOwnerId}`);
 
 
