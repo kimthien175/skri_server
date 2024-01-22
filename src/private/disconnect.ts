@@ -64,7 +64,7 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
 
             await collection.updateOne({ code: socketPkg.roomCode },
                 {
-                    $push: { messages: [playerLeaveMsg, newHostMsg] },
+                    $push: { messages: { $each: [playerLeaveMsg, newHostMsg] } },
                     $pull: { players: { id: socketPkg.socket.id } }
                 },
             );
