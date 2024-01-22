@@ -1,13 +1,11 @@
 import { createServer } from 'http'
 import { Server } from "socket.io"
-import { app } from './api.js'
-import { registerInitPrivateRoom } from '../event_handlers/private_room/init/init.js'
-import { registerListenChatMessages } from '../event_handlers/private_room/listen_guess/listen_guess.js'
-import { registerJoinPrivateRoom } from '../event_handlers/private_room/join.js'
-import { registerDeleteRoomOnLeave } from '../event_handlers/delete_room_on_leave/delete_room.js'
-import { SocketPackage } from '../types/socket_package.js'
-import { onLeavingPrivateRoom } from '../event_handlers/private_room/disconnect.js'
-import { onLeavingPublicRoom } from '../event_handlers/public_room/disconnect.js'
+import { app } from './utils/api.js'
+
+import { SocketPackage } from './types/socket_package.js'
+
+import { registerInitPrivateRoom } from './private/init.js'
+import { onLeavingPrivateRoom } from './private/disconnect.js'
 
 const httpServer = createServer(app)
 const io = new Server(httpServer, {
@@ -32,8 +30,8 @@ io.on('connection', (socket) => {
         if (socketPackage.roomCode =='') throw Error('socket.disconnect: Unhandled usecase')
         console.log(`SocketIO.disconnect: roomCode: ${socketPackage.roomCode}`);
         
-        if (socketPackage.roomCode.startsWith('p_'))
-            onLeavingPublicRoom(socketPackage)
+        if (socketPackage.roomCode.startsWith('p_')){}
+           // onLeavingPublicRoom(socketPackage)
          else 
             onLeavingPrivateRoom(socketPackage) 
     })
@@ -41,7 +39,7 @@ io.on('connection', (socket) => {
     // listen to init_room request
     registerInitPrivateRoom(socketPackage)
     // registerListenChatMessages(socketPackage)
-    registerJoinPrivateRoom(socketPackage)
+    //registerJoinPrivateRoom(socketPackage)
     // registerDeleteRoomOnLeave(socketPackage)
 
     //registerLeaveRoom(socketPackage)

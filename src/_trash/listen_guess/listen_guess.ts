@@ -1,8 +1,8 @@
 import { Socket } from "socket.io";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
-import { privateRoomCollection } from "../../../utils/db/collection.js";
+import { privateRoomCollection } from "../../utils/db/collection.js";
 
-export async function storeMessage(roomCode: string, message: MessageFromServer) {
+export async function storeMessage(roomCode: string, message: ServerMessage) {
     return (await privateRoomCollection()).updateOne({ code: roomCode }, { $push: { messages: message } })
 }
 
@@ -12,7 +12,7 @@ export function registerListenChatMessages(socket: Socket<DefaultEventsMap, Defa
         console.log(arg);
 
         // send message to any one in the room except this socket
-        var msg: GuessMessageFromSever = { type: 'guess', player_id: socket.id, guess: arg.guess, timestamp: new Date() }
+        var msg: GuessServerMessage = { type: 'guess', player_id: socket.id, guess: arg.guess, timestamp: new Date() }
 
         socket.to(arg.room).emit('message_from_server', msg)
 

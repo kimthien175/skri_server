@@ -1,10 +1,7 @@
-import { Socket } from "socket.io";
-import { DefaultEventsMap } from "socket.io/dist/typed-events";
-import { privateRoomCollection } from "../../utils/db/collection.js";
-import { addPlayerToExistingRoomWithoutClosingDb } from "../functions/add_player_without_closing_db.js";
-import { mongoClient } from "../../utils/db/mongo.js";
-import { SocketPackage } from "../../types/socket_package.js";
-
+import { mongoClient } from "../utils/db/mongo.js";
+import { SocketPackage } from "../types/socket_package.js";
+import { privateRoomCollection } from "../utils/db/collection.js";
+import { addPlayerToExistingRoomWithoutClosingDb } from "../utils/add_player_without_closing_db.js";
 
 export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
     socketPkg.socket.on('join_private_room', async function (arg: RequestJoinRoom, callback) {

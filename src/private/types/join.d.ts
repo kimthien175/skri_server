@@ -8,7 +8,6 @@ interface RoomWithNewPlayer {
     room: Room
 }
 
-
 interface RequestJoinRoom{
     player: Player
     code: string

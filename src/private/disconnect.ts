@@ -1,7 +1,9 @@
 import { OptionalId, WithId } from "mongodb";
-import { SocketPackage } from "../../types/socket_package.js";
-import { endedPrivateRoomCollection, privateRoomCollection } from "../../utils/db/collection.js";
-import { mongoClient } from "../../utils/db/mongo.js";
+
+import { mongoClient } from "../utils/db/mongo.js";
+import { SocketPackage } from "../types/socket_package.js";
+import { endedPrivateRoomCollection, privateRoomCollection } from "../utils/db/collection.js";
+
 
 
 export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
@@ -27,7 +29,7 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
 
         // no need to delete room, player leave
         // prepare message for case
-        var msg: PlayerLeaveFromServer = {
+        var playerLeaveMsg: PlayerServerMessage = {
             type: 'player_leave',
             player_id: socketPkg.socket.id,
             timestamp: new Date()
@@ -45,10 +47,16 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
 
             var newOwnerId = players[newOwnerIndex].id
 
+            var newHostMsg: NewHostServerMessage={
+                type: 'new_host',
+                player_id: newOwnerId,
+                timestamp: new Date()
+            }
+
             await collection.updateOne({ code: socketPkg.roomCode },
                 {
                     $push: {
-                        messages: msg
+                        messages: [playerLeaveMsg, newHostMsg]
                     },
                     $pull: {
                         players: { id: socketPkg.socket.id }
@@ -60,15 +68,16 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
                 }
             )
             console.log(`onLeavingPrivateRoom: Pass owner ship to player: ${newOwnerId}`);
-            (msg as unknown as HostLeaveFromServer).new_host_id = newOwnerId
-            socketPkg.io.to(socketPkg.roomCode).emit('host_leave', msg)
+
+
+            socketPkg.io.to(socketPkg.roomCode).emit('host_leave', [playerLeaveMsg, newHostMsg])
         } else {
             // room still has players and this player just leave
             await collection.updateOne(
                 { code: socketPkg.roomCode },
                 {
                     $push: {
-                        messages: msg
+                        messages: playerLeaveMsg
                     },
                     $pull: {
                         players: { id: socketPkg.socket.id }
@@ -76,7 +85,7 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
                 }
             );
             // notify every one
-            socketPkg.io.to(socketPkg.roomCode).emit('player_leave', msg)
+            socketPkg.io.to(socketPkg.roomCode).emit('player_leave', playerLeaveMsg)
         }
 
         console.log(`onLeavingPrivateRoom: Remove player ${socketPkg.socket.id} out of room ${socketPkg.roomCode}`);

@@ -1,6 +1,6 @@
-import { randomName } from "../../utils/random_name.js"
+import { randomName } from "./random_name.js"
 import { Collection, PushOperator } from "mongodb"
-import { SocketPackage } from "../../types/socket_package.js"
+import { SocketPackage } from "../types/socket_package.js"
 
 /**
  * Edit player id to socket id
