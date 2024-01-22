@@ -1,11 +1,11 @@
 interface ResponseJoinRoom{
     success: boolean
-    data: RoomWithNewPlayer | object
+    data: RoomAndNewPlayer | object
 }
 
-interface RoomWithNewPlayer {
-    player: Player
-    room: Room
+interface RoomAndNewPlayer{
+    player: player
+    room: WithId<RoomWithOptions>
 }
 
 interface RequestJoinRoom{

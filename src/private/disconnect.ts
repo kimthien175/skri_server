@@ -75,6 +75,7 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
             );
             console.log(`onLeavingPrivateRoom: Pass owner ship to player: ${newOwnerId}`);
 
+            (newHostMsg as any).settings = foundRoomDoc.settings
 
             socketPkg.io.to(socketPkg.roomCode).emit('host_leave', [playerLeaveMsg, newHostMsg])
         } else {

@@ -1,4 +1,4 @@
-import { Db,  MongoClient, ServerApiVersion } from "mongodb"
+import { Db, MongoClient, ServerApiVersion } from "mongodb"
 const uri = "mongodb://mongo:27017/"
 const mongoClient = new MongoClient(uri, {
     serverApi: {
@@ -25,17 +25,13 @@ async function getLastestNews() {
 }
 
 async function getLastestRoomSettingsWithoutClosingDb(): Promise<DBRoomSettingsDocument> {
-    try {
-        var cursor = (await db()).collection('settings').find<Document>({}).sort({ _id: -1 }).limit(1)
-        var doc = await cursor.next()
-        if (doc) {
-            return doc as DBRoomSettingsDocument
-        } else {
-            throw new Error('Can not find any room settings')
-        }
-    } finally {
-        await mongoClient.close()
+    var cursor = (await db()).collection('settings').find<Document>({}).sort({ _id: -1 }).limit(1)
+    var doc = await cursor.next()
+    if (doc) {
+        return doc as DBRoomSettingsDocument
+    } else {
+        throw new Error('Can not find any room settings')
     }
 }
 
-export { getLastestNews, getLastestRoomSettingsWithoutClosingDb , db, mongoClient}
+export { getLastestNews, getLastestRoomSettingsWithoutClosingDb, db, mongoClient }
