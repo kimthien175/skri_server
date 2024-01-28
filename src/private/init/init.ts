@@ -1,9 +1,9 @@
 import cryptoRandomString from 'crypto-random-string'
 import { InsertOneResult, OptionalId } from 'mongodb'
-import { privateRoomCollection } from '../utils/db/collection.js';
-import { SocketPackage } from '../types/socket_package.js';
-import { randomName } from '../utils/random_name.js';
-import { getLastestRoomSettingsWithoutClosingDb, mongoClient } from '../utils/db/mongo.js';
+import { privateRoomCollection } from '../../utils/db/collection.js';
+import { SocketPackage } from '../../types/socket_package.js';
+import { randomName } from '../../utils/random_name.js';
+import { getLastestRoomSettingsWithoutClosingDb, mongoClient } from '../../utils/db/mongo.js';
 
 
 const codeLength = 4; // code including numberic chars or lowercase alphabet chars or both

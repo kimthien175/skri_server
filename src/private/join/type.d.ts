@@ -15,5 +15,5 @@ interface RequestJoinRoom{
 
 interface NewPlayerEmit{
     player: Player
-    message: NewPlayerMessageFromServer
+    message: PlayerJoinMessage
 }

@@ -10,12 +10,14 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
     try {
         var collection = (await privateRoomCollection())
         var foundRoomDoc: WithId<Room> | null = await collection.findOne({ code: socketPkg.roomCode }) as WithId<Room> | null
+
+        // ROOM NULL
         if (foundRoomDoc == null) {
             console.log(`roomCode: ${socketPkg.roomCode}`);
             throw Error('onLeavingPrivateRoom: Unhandled usecase')
         }
 
-
+        // CASE 1: ALONE PLAYER IN ROOM: DELETE ROOM
         if (foundRoomDoc.players.length == 1) {
             // delete room and move to endedPrivateRoom
             await Promise.all([
@@ -27,23 +29,25 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
             return
         }
 
-        var playerName: string = '__'
-        for (var i = 0; i < foundRoomDoc.players.length; i++) {
-            if (foundRoomDoc.players[i].id == socketPkg.socket.id) {
-                playerName = foundRoomDoc.players[i].name;
-                break;
-            }
-        }
+        // var playerName: string = '__'
+        // for (var i = 0; i < foundRoomDoc.players.length; i++) {
+        //     if (foundRoomDoc.players[i].id == socketPkg.socket.id) {
+        //         playerName = foundRoomDoc.players[i].name;
+        //         break;
+        //     }
+        // }
         // no need to delete room, player leave
         // prepare message for case
         var playerLeaveMsg: PlayerLeaveMessage = {
             type: 'player_leave',
             player_id: socketPkg.socket.id,
             timestamp: new Date(),
-            player_name: playerName
+            player_name: socketPkg.name as string
         }
 
+        // CASE 2: ROOM HAS MANY PLAYERS, THIS PLAYER IS HOST
         if (socketPkg.isOwner) {
+            // TODO: HOW ABOUT GAME IS PLAYING?
             // pass ownership to randomized player
 
             // get randomized player
@@ -78,7 +82,11 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
             (newHostMsg as any).settings = foundRoomDoc.settings
 
             socketPkg.io.to(socketPkg.roomCode).emit('host_leave', [playerLeaveMsg, newHostMsg])
-        } else {
+        } 
+
+        // CASE 3: ROOM HAS MANY PLAYERS, THIS PLAYER IS NOT NOT HOST
+        else {
+            // TODO: HOW ABOUT GAME IS PLAYING?
             // room still has players and this player just leave
             await collection.updateOne(
                 { code: socketPkg.roomCode },

@@ -4,11 +4,12 @@ import { app } from './utils/api.js'
 
 import { SocketPackage } from './types/socket_package.js'
 
-import { registerInitPrivateRoom } from './private/init.js'
+import { registerInitPrivateRoom } from './private/init/init.js'
 import { onLeavingPrivateRoom } from './private/disconnect.js'
-import { registerJoinPrivateRoom } from './private/join.js'
+import { registerJoinPrivateRoom } from './private/join/join.js'
 import { registerListenGuessMessages } from './events/player_guess.js'
 import { registerChangeSettings } from './events/host_change_settings.js'
+import { registerStartPrivateGame } from './private/start/start_game.js'
 
 const httpServer = createServer(app)
 const io = new Server(httpServer, {
@@ -43,6 +44,7 @@ io.on('connection', (socket) => {
     registerJoinPrivateRoom(socketPackage)
     registerListenGuessMessages(socketPackage)
     registerChangeSettings(socketPackage)
+    registerStartPrivateGame(socketPackage)
 })
 
 
