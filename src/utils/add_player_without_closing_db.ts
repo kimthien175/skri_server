@@ -1,7 +1,8 @@
-import { randomName } from "./random_name.js"
+
 import { Collection, FindOptions, PushOperator, WithId } from "mongodb"
 import { SocketPackage } from "../types/socket_package.js"
 import { db } from "./db/mongo.js"
+import { Random } from "./random/random.js"
 
 /**
  * Edit player id to socket id
@@ -16,14 +17,14 @@ import { db } from "./db/mongo.js"
  */
 export async function addPlayerToExistingRoomWithoutClosingDb(socketPackage: SocketPackage,
     collection: Collection<Document>,
-    roomCode: string,
-    player: Player,): Promise<RoomAndNewPlayer> {
-
+    requestPackage: RequestJoinRoom): Promise<RoomAndNewPlayer> {
+    var player = requestPackage.player
+    var roomCode = requestPackage.code
     var socket = socketPackage.socket
     player.id = socket.id
 
     if (player.name == '') {
-        player.name = randomName()
+        player.name = await Random.getName(requestPackage.lang)
     }
 
     var message: PlayerJoinMessage = {

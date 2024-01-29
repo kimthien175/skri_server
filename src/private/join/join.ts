@@ -9,7 +9,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
 
         try {
             result.success = true
-            result.data = await addPlayerToExistingRoomWithoutClosingDb(socketPkg, await privateRoomCollection(), arg.code, arg.player);
+            result.data = await addPlayerToExistingRoomWithoutClosingDb(socketPkg, await privateRoomCollection(), arg);
         } catch (e: any) {
             console.log(e);
             result.success = false

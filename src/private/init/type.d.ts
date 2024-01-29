@@ -52,3 +52,8 @@ interface RoomSettings {
     use_custom_words_only: boolean
     custom_words: Array<string>
 }
+
+interface InitPrivateRequestPackage{
+    player: Player
+    lang: string
+}

@@ -12,3 +12,7 @@ export async function publicRoomCollection(): Promise<Collection<Document>> {
 export async function endedPrivateRoomCollection(): Promise<Collection<Document>>{
     return (await mongoClient.connect()).db('skribbl').collection('endedPrivateRooms')
 }
+
+export async function famousNamesCollection(): Promise<Collection<Document>>{
+    return (await mongoClient.connect()).db('skribbl').collection('famousNames')
+}

@@ -2,8 +2,9 @@ import cryptoRandomString from 'crypto-random-string'
 import { InsertOneResult, OptionalId } from 'mongodb'
 import { privateRoomCollection } from '../../utils/db/collection.js';
 import { SocketPackage } from '../../types/socket_package.js';
-import { randomName } from '../../utils/random_name.js';
+
 import { getLastestRoomSettingsWithoutClosingDb, mongoClient } from '../../utils/db/mongo.js';
+import { Random } from '../../utils/random/random.js';
 
 
 const codeLength = 4; // code including numberic chars or lowercase alphabet chars or both
@@ -57,17 +58,18 @@ async function initRoomWithoutClosingDb(owner: Player, defaultSettings: DBRoomSe
 }
 
 export function registerInitPrivateRoom(socketPackage: SocketPackage) {
-    socketPackage.socket.on('init_private_room', async function (player: Player, callback) {
+    socketPackage.socket.on('init_private_room', async function (requestPkg:InitPrivateRequestPackage, callback) {
         var socket = socketPackage.socket
         var result: ResponseCreatedRoom = Object({})
         try {
             var success: CreatedRoom = Object({})
+            var player = requestPkg.player
 
             success.settings = await getLastestRoomSettingsWithoutClosingDb();
 
             // modify playername here
             if (player.name == '') {
-                player.name = randomName()
+                player.name = await Random.getName(requestPkg.lang)
                 success.ownerName = player.name
             }
             // modify player id
@@ -91,6 +93,7 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
             socket.join(socketPackage.roomCode)
         } catch (e: any) {
             console.log('INIT ROOM ERROR')
+            console.log(e);
             result.success = false
             result.data = e
         } finally {

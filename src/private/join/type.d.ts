@@ -11,6 +11,7 @@ interface RoomAndNewPlayer{
 interface RequestJoinRoom{
     player: Player
     code: string
+    lang: string
 }
 
 interface NewPlayerEmit{
