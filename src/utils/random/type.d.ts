@@ -3,4 +3,5 @@ type RandomWordsByLang = {
 }
 
 type RandomNoun = ()=>Promise<string>
-type RandomWords = (length: number)=>Promise<Array<string>>
+type RandomWords = (length: number, mode: WordMode)=>Promise<Array<string>>
+type WordMode = 'Normal' | 'Combination'

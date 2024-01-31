@@ -1,7 +1,7 @@
 interface Room {
     players: Array<Player>
     code: string
-    status: string
+    status: GameState
     settings:RoomSettings
     messages: Array<MessageFromServer>
 

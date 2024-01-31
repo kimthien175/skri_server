@@ -1,6 +1,6 @@
 import { generate } from 'random-words'
 
-export async function randomWordsByEnglish(length: number): Promise<Array<string>> {
+export async function randomWordsByEnglish(length: number, wordMode: WordMode): Promise<Array<string>> {
     return generate({ exactly: length }) as string[]
 }
 

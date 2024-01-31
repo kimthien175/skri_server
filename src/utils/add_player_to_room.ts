@@ -1,7 +1,7 @@
 
 import { Collection, FindOptions, PushOperator, WithId } from "mongodb"
 import { SocketPackage } from "../types/socket_package.js"
-import { db } from "./db/mongo.js"
+import { Mongo} from "./db/mongo.js"
 import { Random } from "./random/random.js"
 
 /**
@@ -15,7 +15,7 @@ import { Random } from "./random/random.js"
  * 
  * @returns lastest room data
  */
-export async function addPlayerToExistingRoomWithoutClosingDb(socketPackage: SocketPackage,
+export async function addPlayerToExistingRoom(socketPackage: SocketPackage,
     collection: Collection<Document>,
     requestPackage: RequestJoinRoom): Promise<RoomAndNewPlayer> {
     var player = requestPackage.player
@@ -51,7 +51,7 @@ export async function addPlayerToExistingRoomWithoutClosingDb(socketPackage: Soc
         throw new Error(`addPlayerToExistingRoomWithoutClosingDb: Can not find room with code ${roomCode}`)
     }
 
-    var optionsDoc = await (await db()).collection('settings').find<Document>({}, { options: 1 } as FindOptions<any>).sort({ _id: -1 }).limit(1).next() as any as {options:RoomOptions} | null
+    var optionsDoc = await Mongo.settings().find<Document>({}, { options: 1 } as FindOptions<any>).sort({ _id: -1 }).limit(1).next() as any as {options:RoomOptions} | null
 
     if (optionsDoc == null){
         throw new Error('addPlayerToExitingRoomWithoutClosingDb: options is empty')

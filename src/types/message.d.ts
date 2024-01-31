@@ -21,9 +21,9 @@ interface PlayerLeaveMessage extends Message {
     player_name: string,
 }
 
-interface PlayerGuessMessage extends Message{
-    type: 'player_guess'
-    guess: string,
+interface PlayerChatMessage extends Message{
+    type: 'player_chat'
+    chat: string,
     player_name: string,
 }
 

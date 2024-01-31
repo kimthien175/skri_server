@@ -1,15 +1,15 @@
 import { OptionalId, WithId } from "mongodb";
 
-import { mongoClient } from "../utils/db/mongo.js";
 import { SocketPackage } from "../types/socket_package.js";
-import { endedPrivateRoomCollection, privateRoomCollection } from "../utils/db/collection.js";
+import { Mongo } from "../utils/db/mongo.js";
 
 
 
 export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
     try {
-        var collection = (await privateRoomCollection())
-        var foundRoomDoc: WithId<Room> | null = await collection.findOne({ code: socketPkg.roomCode }) as WithId<Room> | null
+        await Mongo.connect();
+        var collection  = Mongo.privateRooms();
+        var foundRoomDoc: WithId<Room> | null = await Mongo.privateRooms().findOne({ code: socketPkg.roomCode }) as WithId<Room> | null
 
         // ROOM NULL
         if (foundRoomDoc == null) {
@@ -22,7 +22,7 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
             // delete room and move to endedPrivateRoom
             await Promise.all([
                 collection.deleteOne({ code: socketPkg.roomCode }),
-                (await endedPrivateRoomCollection()).insertOne(foundRoomDoc as unknown as OptionalId<Document>)
+                Mongo.endedPrivateRooms().insertOne(foundRoomDoc as unknown as OptionalId<Document>)
             ])
             console.log(`onLeavingPrivateRoom: done moving to endedPrivateRoom`);
             // END FUNCTION
@@ -69,7 +69,7 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
             await collection.updateOne({ code: socketPkg.roomCode },
                 {
                     $push: { messages: { $each: [playerLeaveMsg, newHostMsg] } },
-                    $pull: { players: { id: socketPkg.socket.id } }
+                    $pull: { players: { id: socketPkg.socket.id }, whiteList: socketPkg.socket.id }
                 },
             );
 
@@ -95,7 +95,7 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
                         messages: playerLeaveMsg
                     },
                     $pull: {
-                        players: { id: socketPkg.socket.id }
+                        players: { id: socketPkg.socket.id, whiteList: socketPkg.socket.id }
                     }
                 }
             );
@@ -104,7 +104,8 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
         }
 
         console.log(`onLeavingPrivateRoom: Remove player ${socketPkg.socket.id} out of room ${socketPkg.roomCode}`);
-    } finally {
-        mongoClient.close()
+    } catch(e){
+        console.log('disconnect');
+        console.log(e);
     }
 }

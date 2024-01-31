@@ -7,9 +7,10 @@ import { SocketPackage } from './types/socket_package.js'
 import { registerInitPrivateRoom } from './private/init/init.js'
 import { onLeavingPrivateRoom } from './private/disconnect.js'
 import { registerJoinPrivateRoom } from './private/join/join.js'
-import { registerListenGuessMessages } from './events/player_guess.js'
+import { registerListenChatMessages } from './events/player_chat.js'
 import { registerChangeSettings } from './events/host_change_settings.js'
 import { registerStartPrivateGame } from './private/start/start_game.js'
+import { registerChooseWord } from './events/choose_word.js'
 
 const httpServer = createServer(app)
 const io = new Server(httpServer, {
@@ -42,9 +43,10 @@ io.on('connection', (socket) => {
 
     registerInitPrivateRoom(socketPackage)
     registerJoinPrivateRoom(socketPackage)
-    registerListenGuessMessages(socketPackage)
+    registerListenChatMessages(socketPackage)
     registerChangeSettings(socketPackage)
     registerStartPrivateGame(socketPackage)
+    registerChooseWord(socketPackage)
 })
 
 

@@ -1,4 +1,4 @@
-import { Db, MongoClient, ServerApiVersion } from "mongodb"
+import { Collection, Db, MongoClient, ServerApiVersion } from "mongodb"
 const uri = "mongodb://mongo:27017/"
 const mongoClient = new MongoClient(uri, {
     serverApi: {
@@ -8,24 +8,23 @@ const mongoClient = new MongoClient(uri, {
     }
 })
 
-async function db(): Promise<Db> { return (await mongoClient.connect()).db('skribbl'); }
-
 async function getLastestNews() {
     try {
-        var cursor = (await db()).collection('news').find({}).sort({ _id: -1 }).limit(1)
+        await Mongo.connect();
+        var cursor = Mongo.news().find({}).sort({ _id: -1 }).limit(1)
         var doc = await cursor.next()
         if (doc) {
             return doc
         } else {
             throw new Error('Can not find any news')
         }
-    } finally {
-        await mongoClient.close()
+    } catch (e){
+        console.log(`getLastestNews: ${e}`);
     }
 }
 
-async function getLastestRoomSettingsWithoutClosingDb(): Promise<DBRoomSettingsDocument> {
-    var cursor = (await db()).collection('settings').find<Document>({}).sort({ _id: -1 }).limit(1)
+async function getLastestRoomSettings(): Promise<DBRoomSettingsDocument> {
+    var cursor = await Mongo.settings().find<Document>({}).sort({ _id: -1 }).limit(1)
     var doc = await cursor.next()
     if (doc) {
         return doc as DBRoomSettingsDocument
@@ -34,4 +33,45 @@ async function getLastestRoomSettingsWithoutClosingDb(): Promise<DBRoomSettingsD
     }
 }
 
-export { getLastestNews, getLastestRoomSettingsWithoutClosingDb, db, mongoClient }
+class Mongo {
+    private constructor(db: Db) {
+        Mongo._db = db;
+    }
+    static _db: Db;
+
+    static async connect() {
+        return new Mongo((await mongoClient.connect()).db('skribbl'));
+    }
+
+    static news(): Collection<Document> {
+        return Mongo._db.collection('news');
+    }
+
+    static settings(): Collection<Document> {
+        return Mongo._db.collection('settings');
+    }
+
+    static privateRooms():Collection<Document> {
+        return Mongo._db.collection('privateRooms');
+    }
+
+    static endedPrivateRooms(){
+        return Mongo._db.collection('endedPrivateRooms')
+    }
+
+    static publicRooms(): Collection<Document>{
+        return Mongo._db.collection('publicRooms')
+    }
+
+    static famousNames(){
+        return Mongo._db.collection('famousNames')
+    }
+
+    static vietnameseWords() { return Mongo._db.collection('vietnameseWords') }
+
+    // static close() {
+    //     mongoClient.close();
+    // }
+}
+
+export { getLastestNews, getLastestRoomSettings, Mongo }
