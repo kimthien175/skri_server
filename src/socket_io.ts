@@ -11,6 +11,7 @@ import { registerListenChatMessages } from './events/player_chat.js'
 import { registerChangeSettings } from './events/host_change_settings.js'
 import { registerStartPrivateGame } from './private/start/start_game.js'
 import { registerChooseWord } from './events/choose_word.js'
+import { registerPlayerDraw } from './events/player_draw.js'
 
 const httpServer = createServer(app)
 const io = new Server(httpServer, {
@@ -47,6 +48,7 @@ io.on('connection', (socket) => {
     registerChangeSettings(socketPackage)
     registerStartPrivateGame(socketPackage)
     registerChooseWord(socketPackage)
+    registerPlayerDraw(socketPackage)
 })
 
 
