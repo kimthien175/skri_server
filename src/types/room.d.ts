@@ -1,13 +1,18 @@
 interface Room {
     players: Array<Player>
     code: string
-    status: GameState
     settings:RoomSettings
     messages: Array<MessageFromServer>
 
-    currentRoundStartedAt?: Timestamp
-    currentRound?: number
-    words?: Array<string>
+    currentRound?: {
+        round: number
+        white_list: array<Player>
+        state: GameState
+    }
+
+    state: {
+        type: string
+    }
 }
 
 interface RoomWithOptions extends Room{

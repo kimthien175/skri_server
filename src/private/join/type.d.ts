@@ -1,11 +1,11 @@
 interface ResponseJoinRoom{
     success: boolean
-    data: RoomAndNewPlayer | object
+    data: RoomAndNewPlayer | any
 }
 
 interface RoomAndNewPlayer{
     player: player
-    room: WithId<RoomWithOptions>
+    room: RoomWithOptions
 }
 
 interface RequestJoinRoom{
@@ -18,3 +18,4 @@ interface NewPlayerEmit{
     player: Player
     message: PlayerJoinMessage
 }
+

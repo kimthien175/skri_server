@@ -19,9 +19,9 @@ async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSett
                 {
                     players: [owner],
                     code: roomCode,
-                    state: {
+                    states: [{
                         type: 'waitForSetup'
-                    },
+                    }],
                     settings: defaultSettings,
                     messages: [message]
                 } as unknown as OptionalId<Document>
@@ -88,6 +88,7 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
             socketPackage.roomCode = success.code
             socketPackage.name = player.name
             socketPackage.isOwner = true
+            socketPackage.room = Mongo.privateRooms()
 
             result.success = true
             result.data = success

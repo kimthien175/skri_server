@@ -1,3 +1,4 @@
+import { Collection } from 'mongodb';
 import { Server, Socket } from 'socket.io';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
 
@@ -11,6 +12,7 @@ export class SocketPackage {
     io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
     socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
     roomCode: string
+    room?: Collection<Document>
     isOwner?: boolean
     name?: string
 }

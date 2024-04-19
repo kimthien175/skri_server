@@ -18,6 +18,7 @@ import { Random } from "./random/random.js"
 export async function addPlayerToExistingRoom(socketPackage: SocketPackage,
     collection: Collection<Document>,
     requestPackage: RequestJoinRoom): Promise<RoomAndNewPlayer> {
+
     var player = requestPackage.player
     var roomCode = requestPackage.code
     var socket = socketPackage.socket
@@ -64,6 +65,7 @@ export async function addPlayerToExistingRoom(socketPackage: SocketPackage,
     await socket.join(roomCode)
     socketPackage.roomCode = roomCode
     socketPackage.name = player.name
+    socketPackage.room = collection
 
     console.log(`addPlayerToExistingRoomWithoutClosingDb: Add player ${socket.id} to room ${roomCode}`);
 
