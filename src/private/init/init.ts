@@ -72,7 +72,7 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
 
             // modify playername here
             if (player.name == '') {
-                player.name = await Random.getName(requestPkg.lang)
+                player.name = (await Random.getWords(1, requestPkg.lang, 'Normal'))[0];
                 success.ownerName = player.name
             }
             // modify player id

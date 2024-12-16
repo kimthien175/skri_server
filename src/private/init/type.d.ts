@@ -44,7 +44,8 @@ interface RoomOptions{
 interface RoomSettings {
     players: number;
     language: string;
-    drawtime: number;
+    draw_time: number;
+    pick_word_time: number;
     rounds: number;
     word_mode: 'Normal' | 'Hidden' | 'Combination';
     word_count: number;

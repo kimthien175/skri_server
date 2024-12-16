@@ -25,7 +25,7 @@ export async function addPlayerToExistingRoom(socketPackage: SocketPackage,
     player.id = socket.id
 
     if (player.name == '') {
-        player.name = await Random.getName(requestPackage.lang)
+        player.name = (await Random.getWords(1,  requestPackage.lang, 'Normal'))[0]
     }
 
     var message: PlayerJoinMessage = {

@@ -1,26 +1,17 @@
-version: '3.7'
-
 services:
   skribbl-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: base
-    volumes:
-      - ./src:/app/src
+    build: .
     container_name: skribbl-server
-    expose:
-      - '4000'
     ports:
       - '4000:4000'
-    command: npm run dev
     links:
       - mongo
+    volumes:
+      - /app/src
+      - ./src:/app/src
 
   mongo: 
     container_name: mongo
     image: mongo
-    volumes:
-      - ./data:/data/db
     ports:
       - '27018:27017'

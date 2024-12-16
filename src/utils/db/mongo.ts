@@ -1,5 +1,5 @@
 import { Collection, Db, MongoClient, ServerApiVersion } from "mongodb"
-const uri = "mongodb://mongo:27017/"
+const uri = "mongodb://localhost:27018/"
 const mongoClient = new MongoClient(uri, {
     serverApi: {
         version: ServerApiVersion.v1,
@@ -39,6 +39,8 @@ class Mongo {
     }
     static _db: Db;
 
+    static get db() {return Mongo._db}
+
     static async connect() {
         return new Mongo((await mongoClient.connect()).db('skribbl'));
     }
@@ -67,11 +69,9 @@ class Mongo {
         return Mongo._db.collection('famousNames')
     }
 
-    static vietnameseWords() { return Mongo._db.collection('vietnameseWords') }
-
-    // static close() {
-    //     mongoClient.close();
-    // }
+    static close() {
+        mongoClient.close();
+    }
 }
 
 export { getLastestNews, getLastestRoomSettings, Mongo }

@@ -1,10 +1,7 @@
-FROM node:20.10.0 as base
+FROM node:20.10.0-alpine
 
 WORKDIR /app
-COPY package*.json ./
-RUN npm i
 COPY . .
+RUN npm i
+CMD ["npm", "run", "dev"]
 
-FROM base as production
-ENV NODE_PATH=./build
-RUN npm run build

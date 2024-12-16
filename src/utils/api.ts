@@ -6,7 +6,7 @@ const app = express()
 app.use(cors())
 
 app.get('/', (req, res) => {
-    res.send('Hel')
+    res.send('Hello world')
 })
 app.get('/news', async function (req, res) {
     res.send(await getLastestNews())

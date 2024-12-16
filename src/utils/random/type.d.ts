@@ -1,7 +1,7 @@
-type RandomWordsByLang = {
-    [key: string]: { noun: RandomNoun, word: RandomWords }
+type RandomWordsCallbackSwitch = {
+    [key: string]: RandomWordsCallback
 }
 
 type RandomNoun = ()=>Promise<string>
-type RandomWords = (length: number, mode: WordMode)=>Promise<Array<string>>
+type RandomWordsCallback = (quantity: number, mode: WordMode)=>Promise<Array<string>>
 type WordMode = 'Normal' | 'Combination'
