@@ -13,18 +13,18 @@ const codeLength = 4; // code including numberic chars or lowercase alphabet cha
 async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: Message): Promise<string> {
     console.log(owner.name);
     var roomCode = cryptoRandomString({ length: codeLength, type: "alphanumeric" }).toLowerCase()
+    var newRoom: Room = {
+        players: [owner],
+        host_player_id: owner.id,
+        code: roomCode,
+        states: [{ type: 'pre_game', started_at: new Date() }],
+        settings: defaultSettings,
+        messages: [message]
+    }
     return await new Promise<string>(async (resolve, reject) =>
         Mongo.privateRooms()
             .insertOne(
-                {
-                    players: [owner],
-                    code: roomCode,
-                    states: [{
-                        type: 'waitForSetup'
-                    }],
-                    settings: defaultSettings,
-                    messages: [message]
-                } as unknown as OptionalId<Document>
+                newRoom as unknown as OptionalId<Document>
             ).then((value: InsertOneResult<Document>) => {
                 console.log(`ROOM OWNER: ${owner.name}`);
                 console.log(`DONE INSERTING ROOM CODE: ${roomCode}`)
@@ -48,7 +48,6 @@ async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSett
 /** init room: modify owner.isOwner = true, init room then output room code*/
 async function initRoom(owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: Message) {
     try {
-        owner.isOwner = true
         var roomCode = await insertRoomCode(codeLength, owner, defaultSettings, message)
         return roomCode
     } catch (e) {

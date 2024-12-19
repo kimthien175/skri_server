@@ -10,9 +10,9 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
             result.data = await addPlayerToExistingRoom(socketPkg, Mongo.privateRooms(), arg );
 
             // process by state
-            switch ((result.data as RoomAndNewPlayer).room.currentRound?.state){
+            // switch ((result.data as RoomAndNewPlayer).room.currentRound?.state){
 
-            }
+            // }
 
         } catch (e: any){
             console.log(`join_private_room: ${socketPkg.socket.id} ${arg.code}`)

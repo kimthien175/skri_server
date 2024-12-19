@@ -6,6 +6,5 @@ interface Player {
         eyes: number;
         mouth: number;
     },
-    isOwner?: boolean;
     point?: number
 }

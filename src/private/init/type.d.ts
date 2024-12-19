@@ -21,16 +21,12 @@ interface DBRoomOptionsItemMinMax {
     max: number;
 }
 
-interface DBRoomOptionsItemList<T> {
-    list: Array<T>
-}
-
 interface RoomOptions{
     players: DBRoomOptionsItemMinMax,
-    language: DBRoomOptionsItemList<string>,
-    drawtime: DBRoomOptionsItemList<number>,
+    language: Array<string>,
+    draw_time: Array<number>,
     rounds: DBRoomOptionsItemMinMax,
-    word_mode: DBRoomOptionsItemList<string>,
+    word_mode: Array<string>,
     word_count: DBRoomOptionsItemMinMax,
     hints: DBRoomOptionsItemMinMax,
     custom_words_rules: {

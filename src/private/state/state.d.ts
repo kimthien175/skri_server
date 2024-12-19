@@ -10,17 +10,15 @@
 
 interface GameState {
     type: string
-    started_at?: Date
+    started_at: Date
 }
 
-interface SetUpState extends GameState{
-    type: 'set_up'
+interface PrivatePreGameState extends GameState{
+    type: 'pre_game'
 }
 
-interface StartGameState extends GameState{
-    type: 'start_game'
-    word_options: Array<string>
-    player_id: string
+interface PublicMatchMakingState extends GameState{
+    type: 'match_making'
 }
 
 interface DrawState extends GameState{
