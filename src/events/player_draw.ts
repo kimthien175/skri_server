@@ -1,4 +1,4 @@
-import { Collection } from "mongodb";
+
 import { SocketPackage } from "../types/socket_package.js";
 
 export function registerPlayerDraw(socketPkg: SocketPackage) {
@@ -9,7 +9,7 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
     socketPkg.socket.on('draw:down', async (data) => {
         // save to db
-        await (socketPkg.room as Collection<Document>).updateOne({ code: socketPkg.roomCode }, {
+        await socketPkg.room.updateOne({ code: socketPkg.roomCode }, {
             $push:{
                 draw: {current: {down: data}}
             }

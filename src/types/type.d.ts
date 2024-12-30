@@ -1,19 +1,29 @@
-interface ResponseCreatedRoom {
-    success: boolean;
-    data: CreatedRoom | object
+import { LatestStateRoom, ServerRoom } from "./room"
+
+
+type RoomResponse<T extends ServerRoom> =
+    {
+        success: true
+        data: RoomResponseData<T>
+    }
+    | {
+        success: false
+        data: object
+    }
+
+interface RoomResponseData< T extends  ServerRoom> {
+    player: Player
+    room: LatestStateRoom<T>
 }
 
-interface CreatedRoom {
-    ownerName?: string,
-    player_id: string
-    code: string
-    settings: DBRoomSettingsDocument
-    message: NewHostMessage
-}
-
-interface DBRoomSettingsDocument extends Document {
-    default: RoomSettings
+interface Specs{
+    settings: RoomSettings
     options: RoomOptions
+    system: RoomSystem
+}
+
+interface RoomSystem {
+    pick_word_time: number
 }
 
 interface DBRoomOptionsItemMinMax {
@@ -21,7 +31,7 @@ interface DBRoomOptionsItemMinMax {
     max: number;
 }
 
-interface RoomOptions{
+interface RoomOptions {
     players: DBRoomOptionsItemMinMax,
     language: Array<string>,
     draw_time: Array<number>,
@@ -50,7 +60,11 @@ interface RoomSettings {
     custom_words: Array<string>
 }
 
-interface InitPrivateRequestPackage{
+interface RoomRequestPackage {
     player: Player
     lang: string
+}
+
+interface JoinRoomRequestPackage extends RoomRequestPackage{
+    code: string
 }

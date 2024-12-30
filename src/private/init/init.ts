@@ -1,106 +1,101 @@
 import cryptoRandomString from 'crypto-random-string'
-import { InsertOneResult, OptionalId } from 'mongodb'
 import { SocketPackage } from '../../types/socket_package.js';
 
-import { Mongo, getLastestRoomSettings } from '../../utils/db/mongo.js';
+import { Mongo, getLastestSpecs } from '../../utils/db/mongo.js';
 import { Random } from '../../utils/random/random.js';
+import { RoomRequestPackage, RoomResponse } from '../../types/type.js';
+import { LatestStateRoom, PrivateRoom } from '../../types/room.js';
+import { NewHostMessage } from '../../types/message.js';
+import { PrivatePreGameState } from '../state/state.js';
+import { OptionalId } from 'mongodb';
 
 
-const codeLength = 4; // code including numberic chars or lowercase alphabet chars or both
+const codeLength = 4; // code including numeric chars or lowercase alphabet chars or both
 
 
 /** insert room code without closing mongodb */
-async function insertRoomCode(roomCodeLength: number, owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: Message): Promise<string> {
-    console.log(owner.name);
-    var roomCode = cryptoRandomString({ length: codeLength, type: "alphanumeric" }).toLowerCase()
-    var newRoom: Room = {
-        players: [owner],
-        host_player_id: owner.id,
-        code: roomCode,
-        states: [{ type: 'pre_game', started_at: new Date() }],
-        settings: defaultSettings,
-        messages: [message]
-    }
-    return await new Promise<string>(async (resolve, reject) =>
-        Mongo.privateRooms()
-            .insertOne(
-                newRoom as unknown as OptionalId<Document>
-            ).then((value: InsertOneResult<Document>) => {
-                console.log(`ROOM OWNER: ${owner.name}`);
-                console.log(`DONE INSERTING ROOM CODE: ${roomCode}`)
-                resolve(roomCode)
-            })
-            .catch(async (reason: any) => {
-                if (reason.code == 11000) {
-                    // do it again
-                    console.log(`ROOM CODE COLLISION, TRY ADDING AGAIN: ${roomCode}`)
-                    var newRoomCode = await insertRoomCode(roomCodeLength + 1, owner, defaultSettings, message)
-                    resolve(newRoomCode)
-                    return
-                }
-                console.log('insertRoomCode: INSERTING ERRROR')
-                console.log(reason)
-                reject(reason)
-            })
-    )
-}
+async function insertRoomCode(roomCodeLength: number, room: Omit<LatestStateRoom<PrivateRoom>, 'code' | '_id'>): Promise<string> {
+    const code = cryptoRandomString({ length: roomCodeLength, type: "alphanumeric" }).toLowerCase();
 
-/** init room: modify owner.isOwner = true, init room then output room code*/
-async function initRoom(owner: Player, defaultSettings: DBRoomSettingsDocument["default"], message: Message) {
-    try {
-        var roomCode = await insertRoomCode(codeLength, owner, defaultSettings, message)
-        return roomCode
-    } catch (e) {
-        console.log('initRoom: MONGODB ERROR')
-        console.log(e)
-        throw e
-    }
+    var completeRoom: OptionalId<PrivateRoom> = {
+        _id: undefined,
+        code,
+        ...room,
+        states: [room.state]
+    };
+
+    return Mongo.privateRooms
+        .insertOne(completeRoom)
+        .then((_) => code)
+        .catch(async (reason: any) => {
+            if (reason.code == 11000) {
+                // do it again
+                console.log(`ROOM CODE COLLISION, TRY ADDING AGAIN: ${completeRoom.code}`)
+
+                //   return insertRoomCode(roomCodeLength + 1, room)
+            }
+            console.log('insertRoomCode: INSERTING ERROR', reason)
+
+            throw reason
+        })
 }
 
 export function registerInitPrivateRoom(socketPackage: SocketPackage) {
-    socketPackage.socket.on('init_private_room', async function (requestPkg: InitPrivateRequestPackage, callback) {
-        var socket = socketPackage.socket
-        var result: ResponseCreatedRoom = Object({})
-
+    socketPackage.socket.on('init_private_room', async function (requestPkg: RoomRequestPackage, callback) {
+        const socket = socketPackage.socket;
         await Mongo.connect();
-        try {
-            var success: CreatedRoom = Object({})
-            var player = requestPkg.player
 
-            success.settings = await getLastestRoomSettings();
+        callback(await new Promise<RoomResponse<PrivateRoom>>(async (resolve) => {
+            try {
+                const player = requestPkg.player;
+                //#region PLAYER
+                player.id = socket.id
+                if (player.name === '') {
+                    player.name = (await Random.getWords(1, requestPkg.lang, 'Normal'))[0];
+                }
+                //#endregion
 
-            // modify playername here
-            if (player.name == '') {
-                player.name = (await Random.getWords(1, requestPkg.lang, 'Normal'))[0];
-                success.ownerName = player.name
+                const room: Omit<LatestStateRoom<PrivateRoom>, 'code'> & { code?: string } = {
+                    host_player_id: player.id,
+                    players: [player],
+                    messages: [new NewHostMessage(player.id, player.name)],
+                    future_states: [],
+                    ...(await getLastestSpecs()),
+                    state: new PrivatePreGameState()
+                };
+
+
+                // insert code to room
+                room.code = await insertRoomCode(codeLength, room)
+
+                // modify socket package
+                socketPackage.roomCode = room.code
+                socketPackage.name = player.name
+                socketPackage.isOwner = true
+
+                // join room
+                socket.join(socketPackage.roomCode)
+
+
+
+                resolve({
+                    success: true,
+                    data: {
+                        player,
+                        room: room as unknown as LatestStateRoom<PrivateRoom>
+                    }
+
+                })
+
+            } catch (e: any) {
+                console.log('INIT ROOM ERROR')
+                console.log(e);
+                resolve({
+                    success: false,
+                    data: e
+                })
             }
-            // modify player id
-            player.id = socket.id
-            success.player_id = player.id
-
-
-            var message: NewHostMessage = { type: 'new_host', player_id: player.id, timestamp: new Date(), player_name: player.name }
-            success.message = message
-
-
-            success.code = await initRoom(player, success.settings.default, message)
-            socketPackage.roomCode = success.code
-            socketPackage.name = player.name
-            socketPackage.isOwner = true
-            socketPackage.room = Mongo.privateRooms()
-
-            result.success = true
-            result.data = success
-
-            // join room
-            socket.join(socketPackage.roomCode)
-        } catch (e: any) {
-            console.log('INIT ROOM ERROR')
-            console.log(e);
-            result.success = false
-            result.data = e
-        } finally {
-            callback(result)
-        }
+        })
+        )
     })
 }

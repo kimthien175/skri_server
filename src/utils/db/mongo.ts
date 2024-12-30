@@ -1,4 +1,6 @@
-import { Collection, Db, MongoClient, ServerApiVersion } from "mongodb"
+import { Collection, Db, MongoClient, OptionalId, ServerApiVersion, WithId } from "mongodb"
+import { Specs } from "../../types/type";
+import {  PrivateRoom, PublicRoom} from "../../types/room";
 const uri = "mongodb://localhost:27018/"
 const mongoClient = new MongoClient(uri, {
     serverApi: {
@@ -23,11 +25,11 @@ async function getLastestNews() {
     }
 }
 
-async function getLastestRoomSettings(): Promise<DBRoomSettingsDocument> {
-    var cursor = await Mongo.settings().find<Document>({}).sort({ _id: -1 }).limit(1)
+async function getLastestSpecs(): Promise<Specs> {
+    var cursor = Mongo.specs().find<Document>({}, {projection:{_id: 0}}).sort({ _id: -1 }).limit(1)
     var doc = await cursor.next()
     if (doc) {
-        return doc as DBRoomSettingsDocument
+        return doc as unknown as Specs
     } else {
         throw new Error('Can not find any room settings')
     }
@@ -49,19 +51,19 @@ class Mongo {
         return Mongo._db.collection('news');
     }
 
-    static settings(): Collection<Document> {
-        return Mongo._db.collection('settings');
+    static specs(): Collection<Document> {
+        return Mongo._db.collection('specs');
     }
 
-    static privateRooms():Collection<Document> {
-        return Mongo._db.collection('privateRooms');
+    static get privateRooms():Collection<PrivateRoom>{
+        return Mongo._db.collection('privateRooms') 
     }
 
     static endedPrivateRooms(){
         return Mongo._db.collection('endedPrivateRooms')
     }
 
-    static publicRooms(): Collection<Document>{
+    static get publicRooms(): Collection<PublicRoom>{
         return Mongo._db.collection('publicRooms')
     }
 
@@ -74,4 +76,6 @@ class Mongo {
     }
 }
 
-export { getLastestNews, getLastestRoomSettings, Mongo }
+
+
+export { getLastestNews, getLastestSpecs, Mongo }

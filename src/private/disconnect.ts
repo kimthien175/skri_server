@@ -1,15 +1,16 @@
-import { OptionalId, WithId } from "mongodb";
+import { OptionalId } from "mongodb";
 
 import { SocketPackage } from "../types/socket_package.js";
 import { Mongo } from "../utils/db/mongo.js";
+import { Message, NewHostMessage, PlayerLeaveMessage } from "../types/message.js";
 
 
 
 export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
     try {
         await Mongo.connect();
-        var collection  = Mongo.privateRooms();
-        var foundRoomDoc: WithId<Room> | null = await Mongo.privateRooms().findOne({ code: socketPkg.roomCode }) as WithId<Room> | null
+        var collection = Mongo.privateRooms;
+        var foundRoomDoc = await collection.findOne({ code: socketPkg.roomCode })
 
         // ROOM NULL
         if (foundRoomDoc == null) {
@@ -38,12 +39,7 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
         // }
         // no need to delete room, player leave
         // prepare message for case
-        var playerLeaveMsg: PlayerLeaveMessage = {
-            type: 'player_leave',
-            player_id: socketPkg.socket.id,
-            timestamp: new Date(),
-            player_name: socketPkg.name as string
-        }
+        const playerLeaveMsg = new PlayerLeaveMessage(socketPkg.socket.id, socketPkg.name)
 
         // CASE 2: ROOM HAS MANY PLAYERS, THIS PLAYER IS HOST
         if (socketPkg.isOwner) {
@@ -59,16 +55,12 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
 
             var newOwnerId = players[newOwnerIndex].id
 
-            var newHostMsg: NewHostMessage = {
-                type: 'new_host',
-                player_id: newOwnerId,
-                timestamp: new Date(),
-                player_name: players[newOwnerIndex].name
-            }
+            const newHostMsg = new NewHostMessage(newOwnerId, players[newOwnerIndex].name)
 
             await collection.updateOne({ code: socketPkg.roomCode },
                 {
-                    $push: { messages: { $each: [playerLeaveMsg, newHostMsg] } },
+                    $push: { messages: { $each: [playerLeaveMsg, newHostMsg] as Message[] } },
+
                     $pull: { players: { id: socketPkg.socket.id }, whiteList: socketPkg.socket.id }
                 },
             );
@@ -82,7 +74,7 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
             (newHostMsg as any).settings = foundRoomDoc.settings
 
             socketPkg.io.to(socketPkg.roomCode).emit('host_leave', [playerLeaveMsg, newHostMsg])
-        } 
+        }
 
         // CASE 3: ROOM HAS MANY PLAYERS, THIS PLAYER IS NOT NOT HOST
         else {
@@ -95,7 +87,10 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
                         messages: playerLeaveMsg
                     },
                     $pull: {
-                        players: { id: socketPkg.socket.id, whiteList: socketPkg.socket.id }
+                        players: {
+                            id: socketPkg.socket.id//, whiteList: socketPkg.socket.id 
+
+                        }
                     }
                 }
             );
@@ -104,7 +99,7 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
         }
 
         console.log(`onLeavingPrivateRoom: Remove player ${socketPkg.socket.id} out of room ${socketPkg.roomCode}`);
-    } catch(e){
+    } catch (e) {
         console.log('disconnect');
         console.log(e);
     }

@@ -1,6 +1,9 @@
-interface Player {
-    id: string;
-    name: string;
+interface InitPlayer{
+    id: string 
+    name: string
+}
+
+interface Player extends InitPlayer{
     avatar: {
         color: number;
         eyes: number;
