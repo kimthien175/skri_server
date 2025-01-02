@@ -1,4 +1,4 @@
-import { RoomSettings } from './type'
+import { RoomOptions, RoomSettings, RoomSystem } from './type'
 import { Message } from './message'
 import { GameState } from '../private/state/state'
 
@@ -12,14 +12,19 @@ export interface ServerRoom {
     states: GameState[]
 
     code: string
+
+    system: RoomSystem
+
+    round_white_list: string[]
+
+    current_round: number
 }
 
-
-type LatestStateRoom<T extends ServerRoom> = Omit<T & { state: GameState }, keyof { states: GameState[] }>
-
 /** ful doc: including states*/
-type PublicRoom = ServerRoom
+export interface PublicRoom extends ServerRoom { }
 
 /**ful doc: including states*/
-export interface PrivateRoom extends ServerRoom { host_player_id: string }
-
+export interface PrivateRoom extends ServerRoom {
+    host_player_id: string
+    options: RoomOptions
+}

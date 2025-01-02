@@ -4,7 +4,7 @@ import { SocketPackage } from '../../types/socket_package.js';
 import { Mongo, getLastestSpecs } from '../../utils/db/mongo.js';
 import { Random } from '../../utils/random/random.js';
 import { RoomRequestPackage, RoomResponse } from '../../types/type.js';
-import { LatestStateRoom, PrivateRoom } from '../../types/room.js';
+import {PrivateRoom } from '../../types/room.js';
 import { NewHostMessage } from '../../types/message.js';
 import { PrivatePreGameState } from '../state/state.js';
 import { OptionalId } from 'mongodb';
@@ -14,23 +14,18 @@ const codeLength = 4; // code including numeric chars or lowercase alphabet char
 
 
 /** insert room code without closing mongodb */
-async function insertRoomCode(roomCodeLength: number, room: Omit<LatestStateRoom<PrivateRoom>, 'code' | '_id'>): Promise<string> {
+async function insertRoomCode(roomCodeLength: number, room: Omit<PrivateRoom, 'code'>&{code?:string}): Promise<string> {
     const code = cryptoRandomString({ length: roomCodeLength, type: "alphanumeric" }).toLowerCase();
 
-    var completeRoom: OptionalId<PrivateRoom> = {
-        _id: undefined,
-        code,
-        ...room,
-        states: [room.state]
-    };
+    room.code = code
 
     return Mongo.privateRooms
-        .insertOne(completeRoom)
+        .insertOne(room as PrivateRoom)
         .then((_) => code)
         .catch(async (reason: any) => {
             if (reason.code == 11000) {
                 // do it again
-                console.log(`ROOM CODE COLLISION, TRY ADDING AGAIN: ${completeRoom.code}`)
+                console.log(`ROOM CODE COLLISION, TRY ADDING AGAIN: ${room.code}`)
 
                 //   return insertRoomCode(roomCodeLength + 1, room)
             }
@@ -41,11 +36,10 @@ async function insertRoomCode(roomCodeLength: number, room: Omit<LatestStateRoom
 }
 
 export function registerInitPrivateRoom(socketPackage: SocketPackage) {
-    socketPackage.socket.on('init_private_room', async function (requestPkg: RoomRequestPackage, callback) {
-        const socket = socketPackage.socket;
-        await Mongo.connect();
-
-        callback(await new Promise<RoomResponse<PrivateRoom>>(async (resolve) => {
+    socketPackage.socket.on('init_private_room', async (requestPkg: RoomRequestPackage, callback) =>
+        callback(await new Promise<RoomResponse<PrivateRoom>>(async function (resolve) {
+            const socket = socketPackage.socket;
+            await Mongo.connect();
             try {
                 const player = requestPkg.player;
                 //#region PLAYER
@@ -55,13 +49,15 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
                 }
                 //#endregion
 
-                const room: Omit<LatestStateRoom<PrivateRoom>, 'code'> & { code?: string } = {
+                const room: Omit<PrivateRoom, 'code'> & { code?: string } = {
                     host_player_id: player.id,
                     players: [player],
                     messages: [new NewHostMessage(player.id, player.name)],
                     future_states: [],
                     ...(await getLastestSpecs()),
-                    state: new PrivatePreGameState()
+                    states: [new PrivatePreGameState()],
+                    round_white_list: [player.id],
+                    current_round: 1
                 };
 
 
@@ -74,15 +70,13 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
                 socketPackage.isOwner = true
 
                 // join room
-                socket.join(socketPackage.roomCode)
-
-
+                await socket.join(socketPackage.roomCode)
 
                 resolve({
                     success: true,
                     data: {
                         player,
-                        room: room as unknown as LatestStateRoom<PrivateRoom>
+                        room: room as PrivateRoom
                     }
 
                 })
@@ -95,7 +89,5 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
                     data: e
                 })
             }
-        })
-        )
-    })
+        })))
 }

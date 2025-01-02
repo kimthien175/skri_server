@@ -8,7 +8,7 @@ export function registerListenChatMessages(socketPkg: SocketPackage) {
     socketPkg.socket.on('player_chat', async function (chat: string) {
         await Mongo.connect()
         try {
-            var msg = new PlayerChatMessage(socketPkg.name, chat)
+            var msg = new PlayerChatMessage(socketPkg.socket.id, socketPkg.name, chat)
 
             await socketPkg.room.updateOne({ code: socketPkg.roomCode }, { $push: { messages: msg } })
 

@@ -14,10 +14,14 @@ export class NewHostMessage extends Message {
     player_name: string
 }
 
-interface PlayerJoinMessage extends Message {
-    type: 'player_join',
-    player_id: string,
-    player_name: string,
+export class PlayerJoinMessage extends Message {
+    constructor(player_id: string, player_name: string){
+        super('player_join')
+        this.player_id = player_id 
+        this.player_name = player_name
+    }
+    player_id: string
+    player_name: string
 }
 
 export class PlayerLeaveMessage extends Message {
@@ -32,12 +36,13 @@ export class PlayerLeaveMessage extends Message {
 }
 
 export class PlayerChatMessage extends Message {
-    constructor(player_name: string, text: string) {
+    constructor(player_id: string, player_name: string, text: string) {
         super('player_chat')
         this.player_name = player_name
         this.text = text
+        this.player_id = player_id
     }
-
+    player_id: string
     text: string
     player_name: string
 }

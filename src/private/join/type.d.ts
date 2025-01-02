@@ -1,7 +1,6 @@
-// interface ResponseJoinRoom{
-//     success: boolean
-//     data: RoomAndNewPlayer | any
-// }
+import { RoomRequestPackage } from "../../types/type";
+
+
 
 // interface RoomAndNewPlayer{
 //     player: Player

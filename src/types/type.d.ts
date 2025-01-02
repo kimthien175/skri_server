@@ -1,4 +1,4 @@
-import { LatestStateRoom, ServerRoom } from "./room"
+import { ServerRoom } from "./room"
 
 
 type RoomResponse<T extends ServerRoom> =
@@ -13,7 +13,7 @@ type RoomResponse<T extends ServerRoom> =
 
 interface RoomResponseData< T extends  ServerRoom> {
     player: Player
-    room: LatestStateRoom<T>
+    room: T
 }
 
 interface Specs{
@@ -63,6 +63,10 @@ interface RoomSettings {
 interface RoomRequestPackage {
     player: Player
     lang: string
+}
+
+interface PrivateRoomJoinRequest extends RoomRequestPackage {
+    code: string
 }
 
 interface JoinRoomRequestPackage extends RoomRequestPackage{
