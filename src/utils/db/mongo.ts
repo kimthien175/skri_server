@@ -71,6 +71,10 @@ class Mongo {
         return Mongo._db.collection('famousNames')
     }
 
+    static get reportedPlayers(): Collection<ReportItem>{
+        return Mongo._db.collection('reportedPlayers')
+    }
+
     static close() {
         mongoClient.close();
     }

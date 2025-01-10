@@ -7,7 +7,6 @@ import { RoomRequestPackage, RoomResponse } from '../../types/type.js';
 import {PrivateRoom } from '../../types/room.js';
 import { NewHostMessage } from '../../types/message.js';
 import { PrivatePreGameState } from '../state/state.js';
-import { OptionalId } from 'mongodb';
 
 
 const codeLength = 4; // code including numeric chars or lowercase alphabet chars or both
@@ -27,7 +26,7 @@ async function insertRoomCode(roomCodeLength: number, room: Omit<PrivateRoom, 'c
                 // do it again
                 console.log(`ROOM CODE COLLISION, TRY ADDING AGAIN: ${room.code}`)
 
-                //   return insertRoomCode(roomCodeLength + 1, room)
+                return insertRoomCode(roomCodeLength + 1, room)
             }
             console.log('insertRoomCode: INSERTING ERROR', reason)
 
@@ -44,6 +43,7 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
                 const player = requestPkg.player;
                 //#region PLAYER
                 player.id = socket.id
+                player.ip = socket.handshake.address;
                 if (player.name === '') {
                     player.name = (await Random.getWords(1, requestPkg.lang, 'Normal'))[0];
                 }
@@ -71,7 +71,7 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
 
                 // join room
                 await socket.join(socketPackage.roomCode)
-
+                console.log(player);
                 resolve({
                     success: true,
                     data: {

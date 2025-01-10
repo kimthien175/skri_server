@@ -1,6 +1,7 @@
 interface InitPlayer{
     id: string 
     name: string
+    ip: string
 }
 
 interface Player extends InitPlayer{
@@ -10,4 +11,5 @@ interface Player extends InitPlayer{
         mouth: number;
     },
     point?: number
+    votekick_by_ids?:string[]
 }

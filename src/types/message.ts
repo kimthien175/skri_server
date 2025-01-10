@@ -47,6 +47,29 @@ export class PlayerChatMessage extends Message {
     player_name: string
 }
 
+export class PlayerVotekickMessage extends Message{
+    constructor(voter_name: string, victim_name: string, vote_count: number, min_count: number){
+        super('player_votekick')
+        this.voter_name = voter_name 
+        this.victim_name = victim_name 
+        this.vote_count = vote_count 
+        this.min_count = min_count
+    }
+    voter_name: string 
+    victim_name: string 
+    vote_count: number 
+    min_count: number
+}
+
+export class PlayerGotKickedMessage extends Message{
+    constructor(player_name: string){
+        super('player_got_kicked')
+        this.player_name = player_name
+    }
+
+    player_name: string
+}
+
 // do later
 // interface DrawingServerMessage extends Message {
 //     type: 'drawing'

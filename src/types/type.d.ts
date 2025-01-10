@@ -1,3 +1,4 @@
+import { BlackItem } from "./black_list"
 import { ServerRoom } from "./room"
 
 
@@ -8,7 +9,7 @@ type RoomResponse<T extends ServerRoom> =
     }
     | {
         success: false
-        data: object
+        data: {type: 'room_not_found'} | BlackItem | {type: 'room_full'}
     }
 
 interface RoomResponseData< T extends  ServerRoom> {

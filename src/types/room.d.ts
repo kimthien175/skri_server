@@ -1,13 +1,14 @@
 import { RoomOptions, RoomSettings, RoomSystem } from './type'
 import { Message } from './message'
 import { GameState } from '../private/state/state'
+import { BlackItem } from './black_list'
 
 export interface ServerRoom {
-    players: Array<Player>
+    players: Player[]
     settings: RoomSettings
     messages: Message[]
 
-    future_states: Array<GameState>
+    future_states: GameState[]
 
     states: GameState[]
 
@@ -17,7 +18,9 @@ export interface ServerRoom {
 
     round_white_list: string[]
 
-    current_round: number
+    current_round: number 
+
+    black_list?: BlackItem[]
 }
 
 /** ful doc: including states*/

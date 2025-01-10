@@ -12,6 +12,8 @@ import { registerChangeSettings } from "./events/host_change_settings.js";
 //import { registerStartPrivateGame } from './private/start/start_game.js'
 //import { registerChooseWord } from './events/choose_word.js'
 import { registerPlayerDraw } from "./events/player_draw.js";
+import { registerVoteKick } from "./events/vote_kick.js";
+import { registerKick } from "./events/kick.js";
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -34,7 +36,7 @@ io.on("connection", (socket) => {
     console.log(`player ${socket.id} disconnected`);
 
     // TODO: remove this 'if' on production
-    if (socketPackage.roomCode ==null) return;
+    if (socketPackage.roomCode == null) return;
     console.log(`SocketIO.disconnect: roomCode: ${socketPackage.roomCode}`);
 
     if (socketPackage.isPublicRoom) {
@@ -46,6 +48,8 @@ io.on("connection", (socket) => {
   registerJoinPrivateRoom(socketPackage);
   registerListenChatMessages(socketPackage);
   registerChangeSettings(socketPackage);
+  registerVoteKick(socketPackage);
+  registerKick(socketPackage)
   //registerStartPrivateGame(socketPackage)
   // registerChooseWord(socketPackage)
   //registerPlayerDraw(socketPackage)
