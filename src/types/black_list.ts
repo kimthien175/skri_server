@@ -1,16 +1,28 @@
 export class BlackItem {
-    constructor(type: string, ip: string) {
+    constructor(type: string) {
         this.type = type
-        this.ip = ip
+
     }
     type: string
-    ip: string
+
 }
 
 export class Banned extends BlackItem {
-    constructor(ip: string) {
-        super('ban', ip)
+    constructor() {
+        super('ban')
     }
+}
+
+export class Kicked extends BlackItem{
+    constructor(old_code: String, id: String){
+        super('kick')
+        this.date  = new Date()
+        this.old_code = old_code
+        this.id = id
+    }
+    date: Date
+    old_code: String
+    id: String
 }
 
 

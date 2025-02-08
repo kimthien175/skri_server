@@ -33,7 +33,7 @@ export const registerVoteKick = (socketPkg: SocketPackage) =>
         // }
     })
 
-export function getVictim(players: Player[], victimId: string): Player {
+export function getVictim(players: Player[], victimId: String): Player {
     for (let player of players) {
         if (player.id == victimId) return player
     }

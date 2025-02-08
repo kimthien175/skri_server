@@ -7,32 +7,30 @@ import { Message, NewHostMessage, PlayerLeaveMessage } from "../types/message.js
 
 
 export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
-    return
-    // try {
-    //     await Mongo.connect();
-    //     var collection = Mongo.privateRooms;
-    //     var foundRoomDoc = await collection.findOne({ code: socketPkg.roomCode })
+    try {
+        await Mongo.connect();
+        var collection = Mongo.privateRooms;
+        var foundRoomDoc = await collection.findOne({ code: socketPkg.roomCode })
 
-    //     // ROOM NULL
-    //     if (foundRoomDoc == null) {
-    //         console.log(`roomCode: ${socketPkg.roomCode}`);
-    //         console.log('onLeavingPrivateRoom: Unhandled usecase')
-    //         return
-    //     }
+        // ROOM NULL
+        if (foundRoomDoc == null) {
+            console.log(`roomCode: ${socketPkg.roomCode}`);
+            console.log('onLeavingPrivateRoom: Unhandled usecase')
+            return
+        }
 
-    //     //#region CASE 1: ALONE PLAYER IN ROOM: DELETE ROOM
-    //     if (foundRoomDoc.players.length <= 1) {
-    //         console.log('DISCONNECT CASE 1');
-    //         // delete room and move to endedPrivateRoom
-    //         await Promise.all([
-    //             collection.deleteOne({ code: socketPkg.roomCode }),
-    //             Mongo.endedPrivateRooms().insertOne(foundRoomDoc)
-    //         ])
-    //         console.log(`onLeavingPrivateRoom: done moving to endedPrivateRoom`);
-    //         // END FUNCTION
-    //         return
-    //     }
-    //     //#endregion
+        //#region CASE 1: ALONE PLAYER IN ROOM: DELETE ROOM
+        if (foundRoomDoc.players.length <= 1) {
+            console.log('DISCONNECT CASE 1');
+            // delete room and move to endedPrivateRoom
+            await Promise.all([
+                collection.deleteOne({ code: socketPkg.roomCode }),
+                Mongo.endedPrivateRooms().insertOne(foundRoomDoc)
+            ])
+            console.log(`onLeavingPrivateRoom: done moving to endedPrivateRoom`);
+            return
+        }
+        //#endregion
 
     //     // no need to delete room, player leave
     //     // prepare message for case
@@ -96,8 +94,8 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
     //     }
 
     //     console.log(`onLeavingPrivateRoom: Remove player ${socketPkg.socket.id} out of room ${socketPkg.roomCode}`);
-    // } catch (e) {
-    //     console.log('disconnect');
-    //     console.log(e);
-    // }
+    } catch (e) {
+        console.log('disconnect');
+        console.log(e);
+    }
 }

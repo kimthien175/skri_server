@@ -1,7 +1,6 @@
 interface InitPlayer{
     id: string 
     name: string
-    ip: string
 }
 
 interface Player extends InitPlayer{

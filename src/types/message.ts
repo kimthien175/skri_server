@@ -5,22 +5,22 @@ export class Message {
 }
 
 export class NewHostMessage extends Message {
-    constructor(player_id: string, player_name: string) {
+    constructor(player_id: String, player_name: string) {
         super('new_host')
         this.player_id = player_id
         this.player_name = player_name
     }
-    player_id: string
+    player_id: String
     player_name: string
 }
 
 export class PlayerJoinMessage extends Message {
-    constructor(player_id: string, player_name: string){
+    constructor(player_id: String, player_name: string){
         super('player_join')
         this.player_id = player_id 
         this.player_name = player_name
     }
-    player_id: string
+    player_id: String
     player_name: string
 }
 

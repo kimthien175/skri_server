@@ -14,7 +14,7 @@ export class SocketPackage {
     socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
 
     _roomCode?: string
-    get roomCode(): string { return this._roomCode as string }
+    get roomCode(): string { return this._roomCode as string}
     set roomCode(code: string) { this._roomCode = code }
 
     _name?: string

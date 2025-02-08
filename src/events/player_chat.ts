@@ -12,7 +12,7 @@ export function registerListenChatMessages(socketPkg: SocketPackage) {
 
             await socketPkg.room.updateOne({ code: socketPkg.roomCode }, { $push: { messages: msg } })
 
-            socketPkg.socket.to(socketPkg.roomCode).emit('player_chat', msg)
+            socketPkg.socket.to(socketPkg.roomCode as string).emit('player_chat', msg)
             console.log(`player_chat:${socketPkg.socket.id}: ${chat}`);
 
 
