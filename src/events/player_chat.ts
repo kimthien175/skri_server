@@ -3,6 +3,7 @@ import { SocketPackage } from "../types/socket_package.js";
 
 import { Mongo } from "../utils/db/mongo.js";
 import { PlayerChatMessage } from "../types/message.js";
+import { ObjectId } from "mongodb";
 
 export function registerListenChatMessages(socketPkg: SocketPackage) {
     socketPkg.socket.on('player_chat', async function (chat: string) {
@@ -10,9 +11,9 @@ export function registerListenChatMessages(socketPkg: SocketPackage) {
         try {
             var msg = new PlayerChatMessage(socketPkg.socket.id, socketPkg.name, chat)
 
-            await socketPkg.room.updateOne({ code: socketPkg.roomCode }, { $push: { messages: msg } })
+            await socketPkg.room.updateOne({ _id: new ObjectId(socketPkg.roomId) }, { $push: { messages: msg } })
 
-            socketPkg.socket.to(socketPkg.roomCode as string).emit('player_chat', msg)
+            socketPkg.socket.to(socketPkg.roomId).emit('player_chat', msg)
             console.log(`player_chat:${socketPkg.socket.id}: ${chat}`);
 
 

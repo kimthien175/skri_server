@@ -26,7 +26,7 @@ async function getLastestNews() {
 }
 
 async function getLastestSpecs(): Promise<Specs> {
-    var cursor = Mongo.specs().find<Document>({}, {projection:{_id: 0}}).sort({ _id: -1 }).limit(1)
+    var cursor = Mongo.specs.find<Document>({}, {projection:{_id: 0}}).sort({ _id: -1 }).limit(1)
     var doc = await cursor.next()
     if (doc) {
         return doc as unknown as Specs
@@ -51,7 +51,7 @@ class Mongo {
         return Mongo._db.collection('news');
     }
 
-    static specs(): Collection<Document> {
+    static get specs(): Collection<Specs> {
         return Mongo._db.collection('specs');
     }
 

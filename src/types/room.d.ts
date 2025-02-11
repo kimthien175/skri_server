@@ -23,8 +23,6 @@ export interface ServerRoom {
     current_round: number 
 
     black_list?: BlackItem[]
-
-    //obsolete_codes?: String[]
 }
 
 /** ful doc: including states*/

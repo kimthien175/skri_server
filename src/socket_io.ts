@@ -36,8 +36,8 @@ io.on("connection", (socket) => {
     console.log(`player ${socket.id} disconnected`);
 
     // TODO: remove this 'if' on production
-    if (socketPackage.roomCode == null) return;
-    console.log(`SocketIO.disconnect: roomCode: ${socketPackage.roomCode}`);
+    if (socketPackage.roomId == null) return;
+    console.log(`SocketIO.disconnect: roomId: ${socketPackage.roomId}`);
 
     if (socketPackage.isPublicRoom) {
     }

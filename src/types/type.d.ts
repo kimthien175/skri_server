@@ -25,6 +25,7 @@ interface Specs{
 
 interface RoomSystem {
     pick_word_time: number
+    kick_interval: number
 }
 
 interface DBRoomOptionsItemMinMax {
@@ -72,4 +73,9 @@ interface PrivateRoomJoinRequest extends RoomRequestPackage {
 
 interface JoinRoomRequestPackage extends RoomRequestPackage{
     code: string
+}
+
+interface PrivateRoomRejoinRequest extends RoomRequestPackage{
+    ticket: string 
+    victim_id: string
 }

@@ -1,30 +1,33 @@
-import { OptionalId } from "mongodb";
+import { ObjectId, OptionalId, UpdateFilter } from "mongodb";
 
 import { SocketPackage } from "../types/socket_package.js";
 import { Mongo } from "../utils/db/mongo.js";
 import { Message, NewHostMessage, PlayerLeaveMessage } from "../types/message.js";
+import { PrivateRoom } from "../types/room.js";
 
 
 
 export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
     try {
-        await Mongo.connect();
         var collection = Mongo.privateRooms;
-        var foundRoomDoc = await collection.findOne({ code: socketPkg.roomCode })
-
+        var roomObjId = new ObjectId(socketPkg.roomId)
+        var foundRoomDoc = await collection.findOne({ _id: roomObjId })
         // ROOM NULL
         if (foundRoomDoc == null) {
-            console.log(`roomCode: ${socketPkg.roomCode}`);
+            console.log(`roomId: ${socketPkg.roomId}`);
             console.log('onLeavingPrivateRoom: Unhandled usecase')
             return
         }
+
+        // if player disconnected by being kicked or banned, do nothing at all
+        if (foundRoomDoc.players.find((e) => e.id == socketPkg.socket.id) === undefined) return
 
         //#region CASE 1: ALONE PLAYER IN ROOM: DELETE ROOM
         if (foundRoomDoc.players.length <= 1) {
             console.log('DISCONNECT CASE 1');
             // delete room and move to endedPrivateRoom
             await Promise.all([
-                collection.deleteOne({ code: socketPkg.roomCode }),
+                collection.deleteOne({ _id: roomObjId }),
                 Mongo.endedPrivateRooms().insertOne(foundRoomDoc)
             ])
             console.log(`onLeavingPrivateRoom: done moving to endedPrivateRoom`);
@@ -32,68 +35,70 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
         }
         //#endregion
 
-    //     // no need to delete room, player leave
-    //     // prepare message for case
-    //     const playerLeaveMsg = new PlayerLeaveMessage(socketPkg.socket.id, socketPkg.name)
+        // no need to delete room, player leave
+        // prepare message for case
+        const playerLeaveMsg = new PlayerLeaveMessage(socketPkg.socket.id, socketPkg.name)
+        var messages: Message[] = [playerLeaveMsg]
+        var updateFilter: UpdateFilter<PrivateRoom> = {
+            $push: {
+                messages: { $each: messages }
+            },
+            $pull: {
+                players: { id: socketPkg.socket.id },
+                round_white_list: socketPkg.socket.id
+            }
+        }
 
-    //     //#region CASE 2: ROOM HAS MANY PLAYERS, THIS PLAYER IS HOST
-    //     if (socketPkg.isOwner) {
-    //         console.log('DISCONNECT CASE 2');
-    //         // pass ownership to randomized player
-    //         // get randomized player
-    //         var newOwnerIndex: number
-    //         var players = foundRoomDoc.players
-    //         do {
-    //             newOwnerIndex = Math.floor(Math.random() * players.length)
-    //         } while (players[newOwnerIndex].id == socketPkg.socket.id)
+        //#region CASE 2: ROOM HAS MANY PLAYERS, THIS PLAYER IS HOST
+        if (socketPkg.isOwner) {
+            console.log('DISCONNECT CASE 2: change room owner');
+            // pass ownership to randomized player
+            // get randomized player
+            var newOwnerIndex: number
+            var players = foundRoomDoc.players
+            do {
+                newOwnerIndex = Math.floor(Math.random() * players.length)
+            } while (players[newOwnerIndex].id == socketPkg.socket.id)
 
-    //         var newOwnerId = players[newOwnerIndex].id
+            var newOwnerId = players[newOwnerIndex].id
 
-    //         const newHostMsg = new NewHostMessage(newOwnerId, players[newOwnerIndex].name)
+            const newHostMsg = new NewHostMessage(newOwnerId, players[newOwnerIndex].name)
 
-    //         await collection.updateOne({ code: socketPkg.roomCode },
-    //             {
-    //                 $set: { host_player_id: newOwnerId },
-    //                 $push: { messages: { $each: [playerLeaveMsg, newHostMsg] } },
-    //                 $pull: {
-    //                     players: { id: socketPkg.socket.id },
-    //                     round_white_list: socketPkg.socket.id
-    //                 }
-    //             }
-    //         );
+            updateFilter.$set = { host_player_id: newOwnerId }
+            messages.push(newHostMsg)
 
-    //         console.log(`onLeavingPrivateRoom: Pass owner ship to player: ${newOwnerId}`);
+            console.log(`onLeavingPrivateRoom: Pass owner ship to player: ${newOwnerId}`);
 
-    //         (newHostMsg as any).settings = foundRoomDoc.settings
+            //#region SAME_FOR_ALL_CASE
+            var updateResult = await collection.updateOne({ _id: roomObjId }, updateFilter);
 
-    //         socketPkg.io.to(socketPkg.roomCode).emit('host_leave', [playerLeaveMsg, newHostMsg])
-    //     }
-    //     //#endregion
+            if (!(updateResult.acknowledged && updateResult.modifiedCount == 1)) throw new Error('update error');
 
-    //     // CASE 3: ROOM HAS MANY PLAYERS, THIS PLAYER IS NOT NOT HOST
-    //     else {
-    //         console.log('DISCONNECT CASE 3');
-    //         // TODO: HOW ABOUT GAME IS PLAYING?
-    //         // room still has players and this player just leave
-    //         await collection.updateOne(
-    //             { code: socketPkg.roomCode },
-    //             {
-    //                 $push: {
-    //                     messages: playerLeaveMsg
-    //                 },
-    //                 $pull: {
-    //                     players: {
-    //                         id: socketPkg.socket.id//, whiteList: socketPkg.socket.id 
+            // notify every one
+            socketPkg.io.to(socketPkg.roomId).emit('player_leave', playerLeaveMsg)
 
-    //                     }
-    //                 }
-    //             }
-    //         );
-    //         // notify every one
-    //         socketPkg.io.to(socketPkg.roomCode).emit('player_leave', playerLeaveMsg)
-    //     }
+            console.log(`onLeavingPrivateRoom: Remove player ${socketPkg.socket.id} out of room ${socketPkg.roomId}`)
+            //#endregion
 
-    //     console.log(`onLeavingPrivateRoom: Remove player ${socketPkg.socket.id} out of room ${socketPkg.roomCode}`);
+            socketPkg.io.to(socketPkg.roomId).except(newOwnerId).emit('new_host', newHostMsg)
+
+            newHostMsg.settings = foundRoomDoc.settings
+            socketPkg.io.to(newOwnerId).emit('new_host', newHostMsg)
+
+            return
+        }
+        //#endregion
+
+        //#region SAME_FOR_ALL_CASE
+        var updateResult = await collection.updateOne({ _id: roomObjId }, updateFilter);
+
+        if (!(updateResult.acknowledged && updateResult.modifiedCount == 1)) throw new Error('update error');
+
+        // notify every one
+        socketPkg.io.to(socketPkg.roomId).emit('player_leave', playerLeaveMsg)
+
+        console.log(`onLeavingPrivateRoom: Remove player ${socketPkg.socket.id} out of room ${socketPkg.roomId}`);
+        //#endregion
     } catch (e) {
         console.log('disconnect');
         console.log(e);

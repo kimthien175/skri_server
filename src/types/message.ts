@@ -1,3 +1,5 @@
+import { RoomSettings } from "./type"
+
 export class Message {
     constructor(type: string) { this.type = type }
     type: string
@@ -12,6 +14,7 @@ export class NewHostMessage extends Message {
     }
     player_id: String
     player_name: string
+    settings?:RoomSettings
 }
 
 export class PlayerJoinMessage extends Message {

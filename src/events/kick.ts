@@ -1,4 +1,4 @@
-import { Collection, Filter, UpdateFilter } from "mongodb";
+import { Collection, Filter, ObjectId, ReturnDocument, UpdateFilter } from "mongodb";
 import { SocketPackage } from "../types/socket_package.js";
 import { PrivateRoom, ServerRoom } from "../types/room";
 import { PlayerGotKickedMessage } from "../types/message.js";
@@ -12,9 +12,9 @@ export const registerKick = async function (socketPkg: SocketPackage) {
     socketPkg.socket.on('host_kick', async function (victimId: string, callback: (res: KickResponse) => void) {
         // verify host 
         try {
-            var room = await (socketPkg.room as Collection<PrivateRoom>).findOne(
+            var room = await (socketPkg.room as unknown as Collection<PrivateRoom>).findOne(
                 {
-                    code: socketPkg.roomCode,
+                    _id: new ObjectId(socketPkg.roomId),
                     host_player_id: socketPkg.socket.id,
                     players: { $elemMatch: { id: victimId } }
                 }
@@ -26,7 +26,7 @@ export const registerKick = async function (socketPkg: SocketPackage) {
             }
 
             await kick(victimId, socketPkg)
-            callback({success: true, data: null})
+            callback({ success: true, data: null })
             return
         } catch (e: any) {
             callback({ success: false, reason: e })
@@ -41,32 +41,43 @@ type KickResponse = {
 } | { success: false, reason: any }
 
 async function kick(victimId: String, socketPkg: SocketPackage) {
-    var room = await socketPkg.room.findOne({ code: socketPkg.roomCode })
+    var roomObjId = new ObjectId(socketPkg.roomId)
+    var room = await socketPkg.room.findOne({ _id: roomObjId })
     if (room == null) throw new Error('room not found')
 
     var new_code = await getNewRoomCode(socketPkg.room as Collection<ServerRoom>)
     var message = new PlayerGotKickedMessage(getVictim(room.players, victimId).name)
-    var black_item = new Kicked(socketPkg.roomCode, victimId)
+    var black_item = new Kicked(victimId)
 
     //save to db
-    var updateResult = await socketPkg.room.updateOne({ code: socketPkg.roomCode }, {
-        $push: {
-            messages: message,
-            black_list: black_item
-        },
-        $pull: { players: { id: victimId } },
-        $set: { code: new_code }
+    var updateResult = await socketPkg.room.findOneAndUpdate(
+        { _id: roomObjId },
+        {
+            $push: {
+                messages: message,
+                black_list: black_item
+            },
+            $pull: {
+                players: { id: victimId },
+                round_white_list: victimId
+            },
+            $set: { code: new_code }
+        }, {
+        returnDocument: ReturnDocument.AFTER,
+        projection: { _id: 1 },
+        includeResultMetadata: false
     })
 
-    if (updateResult.modifiedCount == 1) {
+    if (updateResult != null) {
+        console.log(updateResult._id);
         // emit to victim
         io.to(victimId as string).emit('player_got_kicked', {
-            ticket: updateResult.upsertedId,
+            ticket: updateResult._id,
             date: black_item.date,
             victim_id: victimId
         })
         // emit to everyone else
-        io.to(socketPkg.roomCode as string).except(victimId as string).emit('player_got_kicked', {
+        io.to(socketPkg.roomId).except(victimId as string).emit('player_got_kicked', {
             message, new_code, victim_id: victimId
         })
     } else {

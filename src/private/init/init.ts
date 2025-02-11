@@ -37,15 +37,18 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
                 };
 
                 // insert code to room
-                await Mongo.privateRooms.insertOne(room)
+                var instertResult = await Mongo.privateRooms.insertOne(room)
 
                 // modify socket package
-                socketPackage.roomCode = room.code as string
+                socketPackage.roomId = instertResult.insertedId.toString()
                 socketPackage.name = player.name
                 socketPackage.isOwner = true
+                socketPackage.isPublicRoom = false
+
+                console.log(instertResult.insertedId.toString());
 
                 // join room
-                await socket.join(socketPackage.roomCode as string)
+                await socket.join(instertResult.insertedId.toString())
                 console.log(player);
                 resolve({
                     success: true,

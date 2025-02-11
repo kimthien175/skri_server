@@ -14,15 +14,13 @@ export class Banned extends BlackItem {
 }
 
 export class Kicked extends BlackItem{
-    constructor(old_code: String, id: String){
+    constructor(id: String){
         super('kick')
         this.date  = new Date()
-        this.old_code = old_code
+       // this.old_code = old_code
         this.id = id
     }
     date: Date
-    old_code: String
+    //old_code: String
     id: String
 }
-
-
