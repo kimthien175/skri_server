@@ -9,7 +9,7 @@ type RoomResponse<T extends ServerRoom> =
     }
     | {
         success: false
-        data: {type: 'room_not_found'} | BlackItem | {type: 'room_full'}
+        data: {type: 'room_not_found'}  | {type: 'room_full'}
     }
 
 interface RoomResponseData< T extends  ServerRoom> {
@@ -76,6 +76,6 @@ interface JoinRoomRequestPackage extends RoomRequestPackage{
 }
 
 interface PrivateRoomRejoinRequest extends RoomRequestPackage{
-    ticket: string 
-    victim_id: string
+    ticket_id: string 
+    room_id: string
 }

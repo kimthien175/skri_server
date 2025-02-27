@@ -1,23 +1,22 @@
-export class BlackItem {
-    constructor(type: string) {
+export class BlackItem<TYPE extends string> {
+    constructor(type: TYPE) {
         this.type = type
 
     }
-    type: string
-
+    type: TYPE 
 }
 
-export class Banned extends BlackItem {
+export class Banned extends BlackItem<'ban'> {
     constructor() {
         super('ban')
     }
 }
 
-export class Kicked extends BlackItem{
-    constructor(id: String){
+export class Kicked extends BlackItem<'kick'> {
+    constructor(id: String) {
         super('kick')
-        this.date  = new Date()
-       // this.old_code = old_code
+        this.date = new Date()
+        // this.old_code = old_code
         this.id = id
     }
     date: Date

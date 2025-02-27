@@ -1,8 +1,9 @@
 import { RoomOptions, RoomSettings, RoomSystem } from './type'
 import { Message } from './message'
 import { GameState } from '../private/state/state'
-import { BlackItem } from './black_list'
+import { Banned, BlackItem, Kicked } from './black_list'
 import { Document, ObjectId } from 'mongodb'
+import { ServerTicket } from './ticket'
 
 export interface ServerRoom {
     //_id?:ObjectId
@@ -20,9 +21,10 @@ export interface ServerRoom {
 
     round_white_list: String[]
 
-    current_round: number 
+    current_round: number
 
-    black_list?: BlackItem[]
+    //black_list?: (Banned | Kicked)[]
+    tickets?: ServerTicket[]
 }
 
 /** ful doc: including states*/

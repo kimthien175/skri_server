@@ -1,11 +1,13 @@
-import { Collection, Filter, ObjectId, ReturnDocument, UpdateFilter } from "mongodb";
+import { Collection, Filter, FindOneAndUpdateOptions, MatchKeysAndValues, ObjectId, PushOperator, ReturnDocument, UpdateFilter } from "mongodb";
 import { SocketPackage } from "../types/socket_package.js";
 import { PrivateRoom, ServerRoom } from "../types/room";
 import { PlayerGotKickedMessage } from "../types/message.js";
 import { getVictim } from "./vote_kick.js";
-import { Kicked } from "../types/black_list.js";
+import { Banned, Kicked } from "../types/black_list.js";
 import { getNewRoomCode } from "../utils/get_room_code.js";
 import { io } from "../socket_io.js";
+import { getLastestSpecs, Mongo } from "../utils/db/mongo.js";
+import { ServerTicket } from "../types/ticket.js";
 
 export const registerKick = async function (socketPkg: SocketPackage) {
 
@@ -47,35 +49,58 @@ async function kick(victimId: String, socketPkg: SocketPackage) {
 
     var new_code = await getNewRoomCode(socketPkg.room as Collection<ServerRoom>)
     var message = new PlayerGotKickedMessage(getVictim(room.players, victimId).name)
-    var black_item = new Kicked(victimId)
+
+    var updateFilter: UpdateFilter<ServerRoom> & { $set: MatchKeysAndValues<ServerRoom> } & { $push: PushOperator<ServerRoom> } = {
+        $push: {
+            messages: message
+        },
+        $pull: {
+            players: { id: victimId },
+            round_white_list: victimId
+        },
+        $set: { code: new_code }
+    }
+    var options: FindOneAndUpdateOptions & {
+        includeResultMetadata: false;
+    } = {
+        returnDocument: ReturnDocument.AFTER,
+        projection: { _id: 1 },
+        includeResultMetadata: false
+    }
+
+    var ticket = await ServerTicket.init(victimId)
+
+    // check existing ticket
+    if (room.tickets != undefined) {
+        for (var serverTicket of room.tickets) {
+            if (serverTicket.victim_id == victimId) {
+                console.log(`found exist ticket ${serverTicket}`);
+                // replace ticket
+                updateFilter.$set['tickets.$[b]'] = ticket
+                options.arrayFilters = [{ "b.victim_id": victimId }]
+
+                break
+            }
+        }
+    }
+
+    if (options.arrayFilters === undefined) {
+        (updateFilter.$push as any).tickets = ticket
+    }
 
     //save to db
     var updateResult = await socketPkg.room.findOneAndUpdate(
         { _id: roomObjId },
-        {
-            $push: {
-                messages: message,
-                black_list: black_item
-            },
-            $pull: {
-                players: { id: victimId },
-                round_white_list: victimId
-            },
-            $set: { code: new_code }
-        }, {
-        returnDocument: ReturnDocument.AFTER,
-        projection: { _id: 1 },
-        includeResultMetadata: false
-    })
+        updateFilter,
+        options)
 
     if (updateResult != null) {
         console.log(updateResult._id);
         // emit to victim
-        io.to(victimId as string).emit('player_got_kicked', {
-            ticket: updateResult._id,
-            date: black_item.date,
-            victim_id: victimId
-        })
+        console.log(`server ticket ${ticket}`);
+        console.log(`client ticket ${ticket.toClientTicket(roomObjId.toString())}`);
+        io.to(victimId as string).emit('player_got_kicked', ticket.toClientTicket(roomObjId.toString()))
+
         // emit to everyone else
         io.to(socketPkg.roomId).except(victimId as string).emit('player_got_kicked', {
             message, new_code, victim_id: victimId
