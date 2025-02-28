@@ -1,16 +1,13 @@
-import { Collection, Filter, FindOneAndUpdateOptions, MatchKeysAndValues, ObjectId, PushOperator, ReturnDocument, UpdateFilter } from "mongodb";
+import { Collection, FindOneAndUpdateOptions, MatchKeysAndValues, ObjectId, PushOperator, ReturnDocument, UpdateFilter, WithId } from "mongodb";
 import { SocketPackage } from "../types/socket_package.js";
 import { PrivateRoom, ServerRoom } from "../types/room";
 import { PlayerGotKickedMessage } from "../types/message.js";
 import { getVictim } from "./vote_kick.js";
-import { Banned, Kicked } from "../types/black_list.js";
 import { getNewRoomCode } from "../utils/get_room_code.js";
 import { io } from "../socket_io.js";
-import { getLastestSpecs, Mongo } from "../utils/db/mongo.js";
 import { ServerTicket } from "../types/ticket.js";
 
 export const registerKick = async function (socketPkg: SocketPackage) {
-
     socketPkg.socket.on('host_kick', async function (victimId: string, callback: (res: KickResponse) => void) {
         // verify host 
         try {
@@ -27,7 +24,7 @@ export const registerKick = async function (socketPkg: SocketPackage) {
                 return
             }
 
-            await kick(victimId, socketPkg)
+            await kick(victimId, socketPkg, room)
             callback({ success: true, data: null })
             return
         } catch (e: any) {
@@ -42,12 +39,10 @@ type KickResponse = {
     data: any
 } | { success: false, reason: any }
 
-async function kick(victimId: String, socketPkg: SocketPackage) {
+async function kick(victimId: String, socketPkg: SocketPackage, room: WithId<ServerRoom>) {
     var roomObjId = new ObjectId(socketPkg.roomId)
-    var room = await socketPkg.room.findOne({ _id: roomObjId })
-    if (room == null) throw new Error('room not found')
 
-    var new_code = await getNewRoomCode(socketPkg.room as Collection<ServerRoom>)
+    var new_code = await getNewRoomCode(socketPkg.room)
     var message = new PlayerGotKickedMessage(getVictim(room.players, victimId).name)
 
     var updateFilter: UpdateFilter<ServerRoom> & { $set: MatchKeysAndValues<ServerRoom> } & { $push: PushOperator<ServerRoom> } = {

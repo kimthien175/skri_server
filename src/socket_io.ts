@@ -14,6 +14,7 @@ import { registerChangeSettings } from "./events/host_change_settings.js";
 import { registerPlayerDraw } from "./events/player_draw.js";
 import { registerVoteKick } from "./events/vote_kick.js";
 import { registerKick } from "./events/kick.js";
+import { registerBan } from "./events/ban.js";
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -50,6 +51,7 @@ io.on("connection", (socket) => {
   registerChangeSettings(socketPackage);
   registerVoteKick(socketPackage);
   registerKick(socketPackage)
+  registerBan(socketPackage)
   //registerStartPrivateGame(socketPackage)
   // registerChooseWord(socketPackage)
   //registerPlayerDraw(socketPackage)

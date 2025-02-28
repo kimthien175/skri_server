@@ -73,6 +73,14 @@ export class PlayerGotKickedMessage extends Message{
     player_name: string
 }
 
+export class PlayerGotBannedMessage extends Message{
+    constructor(player_name: string){
+        super('player_got_banned')
+        this.player_name = player_name
+    }
+    player_name: string
+}
+
 // do later
 // interface DrawingServerMessage extends Message {
 //     type: 'drawing'
