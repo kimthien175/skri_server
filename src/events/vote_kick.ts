@@ -1,36 +1,73 @@
-import { WithId } from "mongodb";
+import { ObjectId, WithId } from "mongodb";
 import { SocketPackage } from "../types/socket_package";
 import { ServerRoom } from "../types/room";
+import { PlayerVotekickMessage } from "../types/message.js";
+import { kick } from "./kick.js";
+import { io } from "../socket_io.js";
 
 export const registerVoteKick = (socketPkg: SocketPackage) =>
     socketPkg.socket.on('vote_kick', async function (victimId: string, callback: (arg: VotekickResponse) => void) {
-        // try {
-        //     var room: WithId<Pick<ServerRoom, 'players'>> | null = await socketPkg.room.findOne({ code: socketPkg.roomCode }, {projection:{_id: 1, players: 1, }})
-        //     if (room == null) {
-        //         callback({ success: false, reason: 'room not found' })
-        //         return
-        //     }
+        try {
+            var roomObjId = new ObjectId(socketPkg._roomId)
+            var room = await socketPkg.room.findOne({_id: roomObjId, players: {$elemMatch: {id: victimId}}})
 
-        //     var victim = getVictim(room.players, victimId)
+            if (room ==null){
+                callback({success: false, reason: 'room not found'})
+                return
+            }
+            
+            var victim = getVictim(room.players, victimId)
 
-        //     if (victim.votekick_by_ids == undefined)
-        //         victim.votekick_by_ids = []
+            if (victim.votekick == undefined){
+                victim.votekick = {
+                    voter_id_list: [],
+                    min_vote: Math.floor((room.players.length-1) /2)+1
+                }
+            }
 
-        //     if (victim.votekick_by_ids.includes(socketPkg.socket.id)) {
-        //         callback({ success: false, reason: 'already voted' })
-        //         return
-        //     }
+            if (victim.votekick.voter_id_list.includes(socketPkg.socket.id)){
+                callback({success: false, reason: 'already voted'})
+                return
+            }
 
-        //     if (victim.votekick_by_ids.length >= Math.floor(room.players.length /2)+1){
-        //         // kick and notify
-        //     } else {
-        //         // notify
-        //         socketPkg.socket.to(socketPkg.roomCode).emit()
-        //     }
-        // } catch (e: any) {
-        //     callback({ success: false, reason: e })
-        //     return
-        // }
+            victim.votekick.voter_id_list.push(socketPkg.socket.id)
+
+// add message
+var message = new PlayerVotekickMessage(socketPkg.name, victim.name, victim.votekick.voter_id_list.length, victim.votekick.min_vote)
+           
+
+                // save to db
+            var updateResult = await socketPkg.room.updateOne({_id: roomObjId},{
+                $push:{
+                    messages: message
+                },
+                $set:{'players.$[v].votekick': victim.votekick}
+            }, {
+                arrayFilters: [{'v.id': victimId}]
+            })
+
+            if (!updateResult.acknowledged || !updateResult.modifiedCount){
+                callback({success: false, reason: 'update failed'})
+                return
+            }
+
+            // notify to everyone else except victim
+            io.to(socketPkg.roomId).except(victimId).emit('system_message',message)
+
+            if (victim.votekick.voter_id_list.length == victim.votekick.min_vote) {
+                // its time to kick
+                await kick(victim, socketPkg, room)
+            } else if (victim.votekick.voter_id_list.length > victim.votekick.min_vote){
+                callback({success: false, reason: 'vote overflow'})
+                return
+            }
+
+            callback({ success: true })
+            return
+        } catch (e){
+            callback({success: false, reason: e})
+            return
+        }
     })
 
 export function getVictim(players: Player[], victimId: String): Player {
@@ -42,7 +79,6 @@ export function getVictim(players: Player[], victimId: String): Player {
 
 type VotekickResponse = {
     success: true
-    should_remove: boolean
 } | {
     success: false
     reason: any

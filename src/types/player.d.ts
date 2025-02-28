@@ -10,5 +10,10 @@ interface Player extends InitPlayer{
         mouth: number;
     },
     point?: number
-    votekick_by_ids?:string[]
+    votekick?: VoteKick
+}
+
+interface VoteKick{
+    voter_id_list: string[]
+    min_vote: number
 }

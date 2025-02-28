@@ -24,7 +24,7 @@ export const registerKick = async function (socketPkg: SocketPackage) {
                 return
             }
 
-            await kick(victimId, socketPkg, room)
+            await kick(getVictim(room.players, victimId), socketPkg, room)
             callback({ success: true, data: null })
             return
         } catch (e: any) {
@@ -39,19 +39,19 @@ type KickResponse = {
     data: any
 } | { success: false, reason: any }
 
-async function kick(victimId: String, socketPkg: SocketPackage, room: WithId<ServerRoom>) {
+export async function kick(victim: Player, socketPkg: SocketPackage, room: WithId<ServerRoom>) {
     var roomObjId = new ObjectId(socketPkg.roomId)
 
     var new_code = await getNewRoomCode(socketPkg.room)
-    var message = new PlayerGotKickedMessage(getVictim(room.players, victimId).name)
+    var message = new PlayerGotKickedMessage(victim.name)
 
     var updateFilter: UpdateFilter<ServerRoom> & { $set: MatchKeysAndValues<ServerRoom> } & { $push: PushOperator<ServerRoom> } = {
         $push: {
             messages: message
         },
         $pull: {
-            players: { id: victimId },
-            round_white_list: victimId
+            players: { id: victim.id },
+            round_white_list: victim.id
         },
         $set: { code: new_code }
     }
@@ -63,23 +63,23 @@ async function kick(victimId: String, socketPkg: SocketPackage, room: WithId<Ser
         includeResultMetadata: false
     }
 
-    var ticket = await ServerTicket.init(victimId)
+    var ticket = await ServerTicket.init(victim.id)
 
     // check existing ticket
     if (room.tickets != undefined) {
         for (var serverTicket of room.tickets) {
-            if (serverTicket.victim_id == victimId) {
+            if (serverTicket.victim_id == victim.id) {
                 console.log(`found exist ticket ${serverTicket}`);
                 // replace ticket
                 updateFilter.$set['tickets.$[b]'] = ticket
-                options.arrayFilters = [{ "b.victim_id": victimId }]
+                options.arrayFilters = [{ "b.victim_id": victim.id }]
 
                 break
             }
         }
     }
 
-    if (options.arrayFilters === undefined) {
+    if (options.arrayFilters == undefined) {
         (updateFilter.$push as any).tickets = ticket
     }
 
@@ -94,11 +94,11 @@ async function kick(victimId: String, socketPkg: SocketPackage, room: WithId<Ser
         // emit to victim
         console.log(`server ticket ${ticket}`);
         console.log(`client ticket ${ticket.toClientTicket(roomObjId.toString())}`);
-        io.to(victimId as string).emit('player_got_kicked', ticket.toClientTicket(roomObjId.toString()))
+        io.to(victim.id).emit('player_got_kicked', ticket.toClientTicket(roomObjId.toString()))
 
         // emit to everyone else
-        io.to(socketPkg.roomId).except(victimId as string).emit('player_got_kicked', {
-            message, new_code, victim_id: victimId
+        io.to(socketPkg.roomId).except(victim.id).emit('player_got_kicked', {
+            message, new_code, victim_id: victim.id
         })
     } else {
         throw new Error('updating is not right')
