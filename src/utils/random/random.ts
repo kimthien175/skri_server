@@ -1,7 +1,9 @@
 
+import { WordMode } from "../../types/type.js";
 import { Mongo } from "../db/mongo.js";
 import { randomEnglishWords } from "./lang/en.js";
 import {randomVietnameseWords } from "./lang/vi.js";
+import { RandomWordsCallbackSwitch } from "./type.js";
 
 // const famousGlobalNameChance = 1
 // const famousNameByLangChance = 0.3
@@ -26,7 +28,7 @@ export class Random {
     //     return await this.randomWordsByLang[langCode].noun()
     // }
 
-    static async getWords(quantity: number,locale: string, wordMode: WordMode): Promise<Array<string>> {
+    static async getWords(quantity: number,locale: string): Promise<Array<string>> {
         // var randomResult = Math.random()
         // // chance for global famous name
         // if (randomResult < famousGlobalNameChance) {
@@ -38,7 +40,7 @@ export class Random {
         // }
 
         // return this.randomWordsByLang[langCode].word(length, wordMode)
-        return Random._callbackSwitch[locale](quantity, wordMode)
+        return Random._callbackSwitch[locale](quantity)
     }
 
     // static async getGlobalFamousName(langCode: string): Promise<string> {

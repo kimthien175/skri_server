@@ -1,5 +1,9 @@
 //START GAME
 
+import { ObjectId } from "mongodb"
+import { ServerRoom } from "../../types/room"
+import { Random } from "../../utils/random/random"
+
 //START ROUND
 
 //CHOOSE WORD
@@ -7,21 +11,38 @@
 //DRAW RESULT
 
 //GAME RESULT
+type MetaDate = { started_at?: Date, previous_state_end_date?: Date }
 
 export class GameState {
-    constructor(type: string) { this.type = type }
+    constructor(type: string) {
+        this.type = type
+        this.id = (new ObjectId()).toString()
+    }
     type: string
-    started_at: Date = new Date()
+    started_at?: Date 
+    previous_state_end_date?: Date 
+    id: string
 }
 
 export class PrivatePreGameState extends GameState {
-    constructor() { super('pre_game') }
+    constructor() { super(PrivatePreGameState.TYPE) }
+    static TYPE: string = 'pre_game'
 }
 
-interface PickWordState extends GameState {
-    player_id: string
+export class PickWordState extends GameState {
+    constructor(arg: {player_id: String, words: string[], round_notify?: number }) {
+        super('pick_word')
+        this.player_id = arg.player_id
+        this.words = arg.words
+        this.round_notify = arg.round_notify 
+    }
+
+    static future = (player_id: String, words: string[], round_notify?: number) =>
+        new PickWordState({player_id, words, round_notify})
+
+    player_id: String
     words: Array<string>
-    type: 'pick_word'
+    round_notify?: number
 }
 
 interface DrawState extends GameState {

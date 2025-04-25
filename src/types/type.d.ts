@@ -49,13 +49,15 @@ interface RoomOptions {
     }
 }
 
+type WordMode = 'Normal' | 'Hidden' | 'Combination'
+
 interface RoomSettings {
     players: number;
     language: string;
     draw_time: number;
     pick_word_time: number;
     rounds: number;
-    word_mode: 'Normal' | 'Hidden' | 'Combination';
+    word_mode: WordMode;
     word_count: number;
     hints: number;
     use_custom_words_only: boolean

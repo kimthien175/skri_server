@@ -1,19 +1,33 @@
 import { RoomOptions, RoomSettings, RoomSystem } from './type'
 import { Message } from './message'
 import { GameState } from '../private/state/state'
-import { Banned, BlackItem, Kicked } from './black_list'
-import { Document, ObjectId } from 'mongodb'
 import { ServerTicket } from './ticket'
 
+export type StateStatus = {
+    current_state_id: GameState['id']
+} &
+    (
+        {
+            command: 'start'
+            date?: Date
+        } |
+        {
+            command: 'end'
+            date: Date
+            next_state_id: GameState['id']
+        } 
+    )
+
 export interface ServerRoom {
-    //_id?:ObjectId
     players: Player[]
     settings: RoomSettings
     messages: Message[]
 
-    future_states: GameState[]
+    status: StateStatus
 
-    states: GameState[]
+    henceforth_states: Record<GameState['id'], GameState>
+
+    old_states: GameState[]
 
     code: String
 

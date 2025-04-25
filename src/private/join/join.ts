@@ -52,7 +52,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
                 player.id = socket.id
                 //player.ip = socket.handshake.address
                 if (player.name === '') {
-                    player.name = (await Random.getWords(1, requestPkg.lang, 'Normal'))[0];
+                    player.name = (await Random.getWords(1, requestPkg.lang))[0];
                 }
                 //#endregion
 
@@ -125,7 +125,7 @@ export const PrivateRoomProjection//: Record<keyof PrivateRoom, any> & { _id: nu
     settings: 1,
     messages: { $slice: ["$messages", -20] },
     future_states: [],
-    states: { $slice: ["$states", -1] },
+    states: { $slice: ["$states", -2] },
     code: 1,
     system: 1,
     round_white_list: 1,
