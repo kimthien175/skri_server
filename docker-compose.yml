@@ -1,17 +1,20 @@
 services:
-  skribbl-server:
-    build: .
-    container_name: skribbl-server
+  server:
+    container_name: skribbl_server
+    build: . 
     ports:
       - '4000:4000'
-    links:
-      - mongo
-    volumes:
-      - /app/src
-      - ./src:/app/src
+    environment:
+      - MONGO_URI=mongodb://db:27017/
 
-  mongo: 
-    container_name: mongo
-    image: mongo
+  db: 
+    container_name: skribbl_db
+    image: mongo 
     ports:
       - '27018:27017'
+    volumes:
+      - db_data:/data/db
+
+volumes:
+  db_data:
+

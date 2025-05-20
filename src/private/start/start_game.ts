@@ -37,8 +37,8 @@ export function registerStartPrivateGame(socketPkg: SocketPackage) {
                 return
             }
 
-            var idList = room?.round_white_list as String[]
-            var firstPicker: String = idList[Math.floor(Math.random() * idList.length)]
+            var idList = room.round_white_list
+            var firstPicker = idList[Math.floor(Math.random() * idList.length)]
 
             var secondPicker: String
             do {
@@ -55,21 +55,20 @@ export function registerStartPrivateGame(socketPkg: SocketPackage) {
 
             var updateFilter: UpdateFilter<PrivateRoom> & { $set: MatchKeysAndValues<PrivateRoom> } = {
                 $set: {
-                    current_round: 1,
-                    status
+                    status,
+                    [`henceforth_states.${newState.id}`]: newState
                 }
             }
-
-            var nextState = PickWordState.future(secondPicker, words.slice(3))
-            updateFilter.$set[`henceforth_states.${newState.id}`] = newState
-            updateFilter.$set[`henceforth_states.${nextState.id}`] = nextState
 
             // save to db and emit
             await roomCol.updateOne({ _id: roomObjId }, updateFilter)
 
             callback({ success: true })
 
-            io.to(socketPkg.roomId).emit('new_states', { status, henceforth_states: updateFilter.$set.henceforth_states})
+            io.to(newState.player_id).emit('new_states', { status, henceforth_states: { [newState.id]: newState } })
+
+            delete newState.words
+            io.to(socketPkg.roomId).except(newState.player_id).emit('new_states', { status, henceforth_states: { [newState.id]: newState } })
 
             //#endregion
         } catch (e) {

@@ -3,7 +3,7 @@ import { SocketPackage } from "../types/socket_package.js"
 import { getNewRoomCode } from "../utils/get_room_code.js"
 import { PlayerGotBannedMessage } from "../types/message.js"
 import { getVictim } from "./vote_kick.js"
-import { ServerRoom } from "../types/room"
+import { ServerRoom } from "../types/room.js"
 import { io } from "../socket_io.js"
 
 export const registerBan = async function (socketPkg: SocketPackage) {

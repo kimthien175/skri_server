@@ -14,6 +14,7 @@
 **/.toolstarget
 **/.vs
 **/.vscode
+**/.idea
 **/.next
 **/.cache
 **/*.*proj.user
@@ -30,6 +31,7 @@
 **/values.dev.yaml
 /data
 /dump
+**/*.sh
 
 LICENSE
 README.md

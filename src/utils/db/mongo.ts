@@ -1,7 +1,7 @@
 import { Collection, Db, MongoClient, OptionalId, ServerApiVersion, WithId } from "mongodb"
 import { Specs } from "../../types/type";
 import {  PrivateRoom, PublicRoom} from "../../types/room";
-const uri = "mongodb://localhost:27018/"
+const uri = process.env.MONGO_URI as string
 const mongoClient = new MongoClient(uri, {
     serverApi: {
         version: ServerApiVersion.v1,

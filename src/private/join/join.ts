@@ -7,7 +7,10 @@ import { Collection, Filter, FindOneAndUpdateOptions, ModifyResult, ObjectId, Pu
 import { PlayerJoinMessage } from "../../types/message.js";
 import { BlackItem } from "../../types/black_list.js";
 
-
+/**
+ * 
+ * send full data, except `settings.custom_words` and states sensitive properties
+ */
 export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
     socketPkg.socket.on('join_private_room', async (requestPkg: PrivateRoomJoinRequest | PrivateRoomRejoinRequest, callback) =>
         callback(await new Promise<RoomResponse<PrivateRoom>>(async function (resolve) {
@@ -73,7 +76,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
                 if ((requestPkg as PrivateRoomRejoinRequest).ticket_id != null) {
                     // modify ticket by new victim_id
                     updateFilter.$set = { 'tickets.$[b].victim_id': socket.id }
-                    options.arrayFilters = [{'b.ticket_id': (requestPkg as PrivateRoomRejoinRequest).ticket_id }]
+                    options.arrayFilters = [{ 'b.ticket_id': (requestPkg as PrivateRoomRejoinRequest).ticket_id }]
                 }
 
                 // modify socketPkg
@@ -100,6 +103,16 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
                 socketPkg.socket.to(socketPkg.roomId).emit('player_join', updateFilter.$push)
 
                 console.log(room);
+
+                // TODO: SEND settings.custom_words to new room host 
+                delete room.settings.custom_words
+
+                room.henceforth_states[room.status.current_state_id].removeSensitiveProperties()
+
+                if (room.status.command == 'end') {
+                    room.henceforth_states[room.status.next_state_id].removeSensitiveProperties()
+                }
+
                 resolve({ success: true, data: { player, room } })
 
             } catch (e: any) {
@@ -116,6 +129,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
     )
 }
 
+// TODO: MESSAGES LAZY LOADING
 export const PrivateRoomProjection//: Record<keyof PrivateRoom, any> & { _id: number } 
     = {
     _id: 1,
@@ -124,11 +138,10 @@ export const PrivateRoomProjection//: Record<keyof PrivateRoom, any> & { _id: nu
     players: 1,
     settings: 1,
     messages: { $slice: ["$messages", -20] },
-    future_states: [],
-    states: { $slice: ["$states", -2] },
+    henceforth_states: 1,
+    status: 1,
     code: 1,
     system: 1,
-    round_white_list: 1,
     current_round: 1,
     // black_list: 0,
 }

@@ -1,6 +1,6 @@
 import { Collection, FindOneAndUpdateOptions, MatchKeysAndValues, ObjectId, PushOperator, ReturnDocument, UpdateFilter, WithId } from "mongodb";
 import { SocketPackage } from "../types/socket_package.js";
-import { PrivateRoom, ServerRoom } from "../types/room";
+import { PrivateRoom, ServerRoom } from "../types/room.js";
 import { PlayerGotKickedMessage } from "../types/message.js";
 import { getVictim } from "./vote_kick.js";
 import { getNewRoomCode } from "../utils/get_room_code.js";

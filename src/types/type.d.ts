@@ -55,13 +55,12 @@ interface RoomSettings {
     players: number;
     language: string;
     draw_time: number;
-    pick_word_time: number;
     rounds: number;
     word_mode: WordMode;
     word_count: number;
     hints: number;
     use_custom_words_only: boolean
-    custom_words: Array<string>
+    custom_words?: Array<string>
 }
 
 interface RoomRequestPackage {
