@@ -17,4 +17,7 @@ services:
 
 volumes:
   db_data:
+    external: true
+    name: skribbl_db_data
+    
 
