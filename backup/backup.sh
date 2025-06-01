@@ -14,6 +14,13 @@ MOUNTS=""
 TAR_COMMANDS=""
 
 for VOLUME_NAME in "$@"; do
+
+  # Check if volume exists
+  if ! docker volume inspect "$VOLUME_NAME" &> /dev/null; then
+    echo "❌ Volume '$VOLUME_NAME' does not exist. Aborting."
+    exit 1
+  fi
+
   VOLUME_PATH="/volumes/${VOLUME_NAME}"
   MOUNTS="$MOUNTS -v ${VOLUME_NAME}:${VOLUME_PATH}"
   DATE=$(date +%Y-%m-%d-%H-%M-%S)
