@@ -46,7 +46,7 @@ export function registerPickWord(socketPkg: SocketPackage) {
             }
 
             var result = await socketPkg.room.updateOne({ _id: roomObjId }, {
-                $set: { status },
+                $set: { status, [`henceforth_states.${newState.id}`]: newState },
                 $push: { outdated_states: oldState },
                 $pull: { round_white_list: currentState.player_id },
                 $unset: { [`henceforth_states.${oldState.id}`]: 1 }

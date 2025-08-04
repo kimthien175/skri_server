@@ -2,6 +2,7 @@ import { RoomOptions, RoomSettings, RoomSystem } from "./type";
 import { Message } from "./message";
 import { GameState } from "../private/state/state";
 import { ServerTicket } from "./ticket";
+import { Player } from "./player";
 
 export type StateStatus = {
   current_state_id: GameState["id"];
@@ -33,6 +34,7 @@ export interface ServerRoom {
   round_white_list: string[];
   current_round: number;
   tickets?: ServerTicket[];
+  used_words?: string[]
 }
 
 export function getRunningState(room: ServerRoom): GameState {

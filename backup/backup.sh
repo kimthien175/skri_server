@@ -23,8 +23,8 @@ for VOLUME_NAME in "$@"; do
 
   VOLUME_PATH="/volumes/${VOLUME_NAME}"
   MOUNTS="$MOUNTS -v ${VOLUME_NAME}:${VOLUME_PATH}"
-  DATE=$(date +%Y-%m-%d-%H-%M-%S)
-  TAR_COMMANDS="$TAR_COMMANDS tar czvf /backup/${VOLUME_NAME}_${DATE}.tar.gz -C ${VOLUME_PATH} . &&"
+  #DATE=$(date +%Y-%m-%d-%H-%M-%S)
+  TAR_COMMANDS="$TAR_COMMANDS tar czvf /backup/${VOLUME_NAME}.tar.gz -C ${VOLUME_PATH} . &&"
 done
 
 # Trim trailing &&

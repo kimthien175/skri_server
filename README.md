@@ -15,3 +15,13 @@ docker run -d -p 8080:8080 -p 50000:50000 --name jenkins -v jenkins_home:/var/je
 # DEPLOY PROJECT TO DOCKER:
 Requirements: restore volume `skribbl_db_data` with data from `/backup/skribbl*.tar.gz` before deploying.<br/>
 Run with docker compose.
+
+
+# NORMAL VIET WORDS:
+Source: https://github.com/vntk/dictionary
+
+# NORMAL ENGLISH WORDS:
+Source: https://github.com/nightblade9/simple-english-dictionary
+
+# POPULAR WORDS FOR EN & VI:
+Source: ChatGPT

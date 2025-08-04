@@ -1,6 +1,5 @@
-import { BlackItem } from "./black_list"
 import { ServerRoom } from "./room"
-
+import { Player} from './player'
 
 type RoomResponse<T extends ServerRoom> =
     {
@@ -33,9 +32,11 @@ interface DBRoomOptionsItemMinMax {
     max: number;
 }
 
+type Language = 'en_US' | 'vi_VN'
+
 interface RoomOptions {
     players: DBRoomOptionsItemMinMax,
-    language: Array<string>,
+    language: Array<Language>,
     draw_time: Array<number>,
     rounds: DBRoomOptionsItemMinMax,
     word_mode: Array<string>,
@@ -51,21 +52,27 @@ interface RoomOptions {
 
 type WordMode = 'Normal' | 'Hidden' | 'Combination'
 
-interface RoomSettings {
+type NonEmptyArray<T> = [T,...T[]]
+type  RoomSettings ={
     players: number;
-    language: string;
-    draw_time: number;
+    language: Language;
     rounds: number;
     word_mode: WordMode;
     word_count: number;
     hints: number;
-    use_custom_words_only: boolean
-    custom_words?: Array<string>
-}
+    draw_time: number;
+    
+} & ({
+    use_custom_words_only: true
+    custom_words: NonEmptyArray<string>
+} | {
+    use_custom_words_only?: false 
+    custom_words?: NonEmptyArray<string>
+} )
 
 interface RoomRequestPackage {
     player: Player
-    lang: string
+    lang: Language
 }
 
 interface PrivateRoomJoinRequest extends RoomRequestPackage {

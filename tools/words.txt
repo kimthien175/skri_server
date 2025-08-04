@@ -1,0 +1,4 @@
+Trấn Thành,Sơn Tùng,Mỹ Tâm,Đàm Vĩnh Hưng,Hoài Linh,Ngọc Trinh,Hương Giang,Đông Nhi,Hari Won,
+Đức Phúc,Hà Nội,Sài Gòn,Huế,Đà Nẵng,Đà Lạt,Nha Trang,Phú Quốc,Hội An,Sapa,Vịnh Hạ Long,
+Thế Giới Di Động,Điện Máy Xanh,Phúc Long
+

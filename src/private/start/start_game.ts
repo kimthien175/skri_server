@@ -1,9 +1,8 @@
-import { Collection, MatchKeysAndValues, ObjectId, UpdateFilter, WithId } from "mongodb";
+import { Collection, MatchKeysAndValues, ObjectId, UpdateFilter } from "mongodb";
 import { SocketPackage } from "../../types/socket_package.js";
-import { Mongo } from "../../utils/db/mongo.js";
 import { Random } from "../../utils/random/random.js";
 import { RoomSettings } from "../../types/type.js";
-import { GameState, PickWordState, PrivatePreGameState } from "../state/state.js";
+import { PickWordState, PrivatePreGameState } from "../state/state.js";
 import { PrivateRoom, StateStatus } from "../../types/room.js";
 import { io } from "../../socket_io.js";
 
@@ -12,7 +11,7 @@ const WordsOptions = 3;
 export function registerStartPrivateGame(socketPkg: SocketPackage) {
     socketPkg.socket.on('start_private_game', async function (gameSettings: RoomSettings, callback: (res: { success: true } | { success: false, reason: any }) => void) {
         try {
-            //#region PREPAIR ROOM
+            //#region PREPARE ROOM
             var roomCol = socketPkg.room as any as Collection<PrivateRoom>
             var roomObjId = new ObjectId(socketPkg.roomId)
             var room = await roomCol.findOne({
@@ -24,9 +23,6 @@ export function registerStartPrivateGame(socketPkg: SocketPackage) {
             //#region CREATE STATE AND NEXT STATE
             // create new state, save to db, callback and emit to everyone else in the room
 
-
-            var words = await Random.getWords(WordsOptions * 2, gameSettings.language)
-
             if (room == null) {
                 callback({ success: false, reason: 'You are not room host' })
                 return
@@ -36,6 +32,8 @@ export function registerStartPrivateGame(socketPkg: SocketPackage) {
                 callback({ success: false, reason: 'wrong game state' })
                 return
             }
+
+            var words = await Random.getWords(room.settings)
 
             var idList = room.round_white_list
             var firstPicker = idList[Math.floor(Math.random() * idList.length)]

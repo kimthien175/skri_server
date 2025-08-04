@@ -1,9 +1,10 @@
 FROM node:20.10.0-alpine
 
-RUN apk add --no-cache git
-
 WORKDIR /app
-COPY . .
+COPY package*.json .
+COPY tsconfig.json .
+COPY src ./src
+
 RUN npm i
 CMD ["npm", "run", "dev"]
 

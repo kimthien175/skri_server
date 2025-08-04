@@ -6,6 +6,7 @@ import { Random } from "../../utils/random/random.js";
 import { Collection, Filter, FindOneAndUpdateOptions, ModifyResult, ObjectId, PushOperator, ReturnDocument, UpdateFilter, WithId } from "mongodb";
 import { PlayerJoinMessage } from "../../types/message.js";
 import { BlackItem } from "../../types/black_list.js";
+import { GameState } from "../state/state.js";
 
 /**
  * 
@@ -55,7 +56,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
                 player.id = socket.id
                 //player.ip = socket.handshake.address
                 if (player.name === '') {
-                    player.name = (await Random.getWords(1, requestPkg.lang))[0];
+                    player.name = (await Random.getWords({word_count: 1, language: requestPkg.lang}))[0];
                 }
                 //#endregion
 
@@ -107,10 +108,10 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
                 // TODO: SEND settings.custom_words to new room host 
                 delete room.settings.custom_words
 
-                room.henceforth_states[room.status.current_state_id].removeSensitiveProperties()
+                GameState.removeSensitiveProperties(room.henceforth_states[room.status.current_state_id])
 
                 if (room.status.command == 'end') {
-                    room.henceforth_states[room.status.next_state_id].removeSensitiveProperties()
+                    GameState.removeSensitiveProperties(room.henceforth_states[room.status.next_state_id])
                 }
 
                 resolve({ success: true, data: { player, room } })

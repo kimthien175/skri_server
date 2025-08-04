@@ -4,6 +4,7 @@ import { ServerRoom } from "../types/room";
 import { PlayerVotekickMessage } from "../types/message.js";
 import { kick } from "./kick.js";
 import { io } from "../socket_io.js";
+import { Player } from "../types/player";
 
 export const registerVoteKick = (socketPkg: SocketPackage) =>
     socketPkg.socket.on('vote_kick', async function (victimId: string, callback: (arg: VotekickResponse) => void) {

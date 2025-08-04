@@ -6,6 +6,7 @@ import { getVictim } from "./vote_kick.js";
 import { getNewRoomCode } from "../utils/get_room_code.js";
 import { io } from "../socket_io.js";
 import { ServerTicket } from "../types/ticket.js";
+import { Player } from "../types/player.js";
 
 export const registerKick = async function (socketPkg: SocketPackage) {
     socketPkg.socket.on('host_kick', async function (victimId: string, callback: (res: KickResponse) => void) {

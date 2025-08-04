@@ -22,7 +22,7 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
             player.id = socket.id;
             //player.ip = socket.handshake.address;
             if (player.name === "") {
-              player.name = (await Random.getWords(1, requestPkg.lang))[0];
+              player.name = (await Random.getWords({word_count:1, language: requestPkg.lang}))[0];
             }
             //#endregion
 
