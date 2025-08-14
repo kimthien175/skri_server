@@ -164,4 +164,8 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
             console.log(e)
         }
     })
+
+    socketPkg.socket.on('draw:end_current', async ()=>{
+        socketPkg.socket.to(socketPkg.roomId).emit('draw:end_current')
+    })
 }

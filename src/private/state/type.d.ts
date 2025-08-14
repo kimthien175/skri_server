@@ -11,6 +11,7 @@ interface DrawStep {
     type: string
     prev_id?: number 
     next_id?: number
+    secondary_id: string
 }
 
 interface ClearStep extends DrawStep {
