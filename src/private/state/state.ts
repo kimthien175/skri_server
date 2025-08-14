@@ -23,7 +23,7 @@ export abstract class GameState {
     id: string
 
     static removeSensitiveProperties(raw: GameState) {
-        switch (raw.type){
+        switch (raw.type) {
             case PickWordState.TYPE:
                 delete (raw as PickWordState).words
                 break;
@@ -69,6 +69,8 @@ export class DrawState extends GameState {
         this.word = arg.word
         if (arg.word_mode != 'Hidden')
             this.hint = arg.word.replaceAll(/\S/g, '_')
+
+        this.draw_data = {tail_id:0, past_steps:{}, current_step: null}
     }
     word?: string
     hint?: string
@@ -78,4 +80,6 @@ export class DrawState extends GameState {
     removeSensitiveProperties() {
         delete this.word
     }
+
+    draw_data: DrawData
 }

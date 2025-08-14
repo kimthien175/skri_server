@@ -57,7 +57,7 @@ io.on("connection", (socket) => {
   registerStartPrivateGame(socketPackage)
   registerPickWord(socketPackage)
   registerHint(socketPackage)
-  //registerPlayerDraw(socketPackage)
+  registerPlayerDraw(socketPackage)
 });
 
 export { httpServer, io };
