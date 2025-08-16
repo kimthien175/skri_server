@@ -1,7 +1,10 @@
 
-import { ObjectId } from "mongodb";
+import { MatchKeysAndValues, ObjectId, UpdateFilter } from "mongodb";
 import { SocketPackage } from "../types/socket_package.js";
 import { DrawState } from "../private/state/state.js";
+import { ServerRoom } from "../types/room.js";
+import { io } from "../socket_io.js";
+import { PlayerStartDrawingMessage } from "../types/message.js";
 
 export function registerPlayerDraw(socketPkg: SocketPackage) {
     socketPkg.socket.on('draw:send_past', async (drawStep: DrawStep) => {
@@ -11,40 +14,27 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
             if (room == null) throw Error('room not found')
 
-            var stateId = (room.status.command == 'end') ? room.status.next_state_id : room.status.current_state_id
-            var state = room.henceforth_states[stateId]
-
-            if (state == null || state.type != DrawState.TYPE) throw Error('state not found')
-
-            var stateDrawData = (state as DrawState).draw_data
-
-            if (stateDrawData == null) {
-                // set tail id
-                var drawData: DrawData = {
-                    tail_id: drawStep.id,
-                    past_steps: { [drawStep.id]: drawStep },
-                    current_step: null
+            var updatePkg: UpdateFilter<ServerRoom> = {
+                $set: {
+                    [`latest_draw_data.past_steps.${drawStep.id}`]: drawStep
                 }
-
-                await socketPkg.room.updateOne({ _id: objectId }, {
-                    $set: {
-                        [`henceforth_states.${stateId}.draw_data`]: drawData
-                    }
-                })
-            } else {
-                // update tail id
-
-                var updatePkg: any = {
-                    [`henceforth_states.${stateId}.draw_data.past_steps.${drawStep.id}`]: drawStep
-                }
-
-                if (stateDrawData.tail_id < drawStep.id)
-                    updatePkg[`henceforth_states.${stateId}.draw_data.tail_id`] = drawStep.id
-
-                await socketPkg.room.updateOne({ _id: objectId }, {
-                    $set: updatePkg
-                })
             }
+
+            if (room.latest_draw_data.tail_id < drawStep.id)
+                (updatePkg as any).$set['latest_draw_data.tail_id'] = drawStep.id
+
+            // send message if this is the first step and current step ==null
+            if (DrawState.isFirstStepEver(room.latest_draw_data)) {
+                var msg = new PlayerStartDrawingMessage(socketPkg.name)
+                updatePkg.$push = {
+                    messages: msg
+                }
+
+                io.to(socketPkg.roomId).emit('system_message', msg)
+            }
+
+
+            await socketPkg.room.updateOne({ _id: objectId }, updatePkg)
 
             // emit spectators
             socketPkg.socket.to(socketPkg.roomId).emit('draw:send_past', drawStep)
@@ -60,25 +50,18 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
             if (room == null) throw Error('room not found')
 
-            var stateId = (room.status.command == 'end') ? room.status.next_state_id : room.status.current_state_id
-            var state = room.henceforth_states[stateId]
-
-            if (state == null || state.type != DrawState.TYPE) throw Error('state not found')
-
-            // when remove, it is supposed to be not null
-            var stateDrawData = (state as DrawState).draw_data as DrawData
-
-
-            var updatePkg: any = {
+            var updatePkg: UpdateFilter<ServerRoom> = {
                 $unset: {
-                    [`henceforth_states.${stateId}.draw_data.${targetId}`]: ""
+                    [`latest_draw_data.past_steps.${targetId}`]: ""
                 }
             }
 
-            if (stateDrawData.tail_id == targetId) {
+            // check tail id
+            var drawData = room.latest_draw_data
+            if (drawData.tail_id == targetId) {
                 var newTailId: number
                 // find new tail id
-                var tailPrevId = stateDrawData.past_steps[targetId].prev_id
+                var tailPrevId = drawData.past_steps[targetId].prev_id
 
                 if (tailPrevId == null) {
                     // performer head
@@ -88,13 +71,13 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
                     newTailId = tailPrevId
 
                     do {
-                        if (stateDrawData.past_steps[newTailId] != null) break;
+                        if (drawData.past_steps[newTailId] != null) break;
                         newTailId--
                     } while (newTailId > 0);
                 }
 
                 updatePkg.$set = {
-                    [`henceforth_states.${stateId}.draw_data.tail_id`]: newTailId
+                    [`latest_draw_data.tail_id`]: newTailId
                 }
             }
 
@@ -114,15 +97,20 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
             if (room == null) throw Error('room not found')
 
-            var stateId = (room.status.command == 'end') ? room.status.next_state_id : room.status.current_state_id
-            var state = room.henceforth_states[stateId]
-
-            if (state == null || state.type != DrawState.TYPE) throw Error('state not found')
-
-            var updatePkg: any = {
+            var updatePkg: UpdateFilter<ServerRoom> = {
                 $set: {
-                    [`henceforth_states.${stateId}.draw_data.current_step`]: drawStep
+                    [`latest_draw_data.current_step`]: drawStep
                 }
+            }
+
+            // send message if this is the first step and current step ==null
+            if (DrawState.isFirstStepEver(room.latest_draw_data)) {
+                var msg = new PlayerStartDrawingMessage(socketPkg.name)
+                updatePkg.$push = {
+                    messages: msg
+                }
+
+                io.to(socketPkg.roomId).emit('system_message', msg)
             }
 
             await socketPkg.room.updateOne({ _id: objectId }, updatePkg)
@@ -141,22 +129,11 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
             if (room == null) throw Error('room not found')
 
-            var stateId = (room.status.command == 'end') ? room.status.next_state_id : room.status.current_state_id
-            var state = room.henceforth_states[stateId]
-
-            if (state == null || state.type != DrawState.TYPE) throw Error('state not found')
-
-            //var brushStep = (state as DrawState).draw_data?.current_steps[drawStepAddon.id] as BrushStep
-
-            var updatePkg: any = {
+            await socketPkg.room.updateOne({ _id: objectId }, {
                 $push: {
-                    [`henceforth_states.${stateId}.draw_data.current_step.points`]: drawStepAddon.point
+                    [`latest_draw_data.current_step.points`]: drawStepAddon.point
                 }
-            }
-
-            await socketPkg.room.updateOne({ _id: objectId }, updatePkg)
-
-            console.log(drawStepAddon);
+            })
 
             // emit spectators
             socketPkg.socket.to(socketPkg.roomId).emit('draw:update_current', drawStepAddon)
@@ -165,7 +142,7 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
         }
     })
 
-    socketPkg.socket.on('draw:end_current', async ()=>{
+    socketPkg.socket.on('draw:end_current', async () => {
         socketPkg.socket.to(socketPkg.roomId).emit('draw:end_current')
     })
 }

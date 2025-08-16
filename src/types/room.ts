@@ -35,6 +35,7 @@ export interface ServerRoom {
   current_round: number;
   tickets?: ServerTicket[];
   used_words?: string[]
+  latest_draw_data: DrawData
 }
 
 export function getRunningState(room: ServerRoom): GameState {

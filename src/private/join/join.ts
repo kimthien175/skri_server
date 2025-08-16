@@ -144,5 +144,6 @@ export const PrivateRoomProjection//: Record<keyof PrivateRoom, any> & { _id: nu
     code: 1,
     system: 1,
     current_round: 1,
+    latest_draw_data: 1
     // black_list: 0,
 }

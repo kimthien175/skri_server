@@ -43,6 +43,11 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
                 date: new Date(),
               },
               henceforth_states: { [pregame_state.id]: pregame_state },
+              latest_draw_data: {
+                current_step: null,
+                past_steps: {},
+                tail_id: 0
+              }
             };
 
             // insert code to room

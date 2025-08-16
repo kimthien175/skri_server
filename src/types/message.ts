@@ -81,11 +81,13 @@ export class PlayerGotBannedMessage extends Message{
     player_name: string
 }
 
-// do later
-// interface DrawingServerMessage extends Message {
-//     type: 'drawing'
-//     player_id: string
-// }
+export class PlayerStartDrawingMessage extends Message {
+    constructor(player_name: string){
+        super('player_start_drawing')
+        this.player_name = player_name
+    }
+    player_name: string
+}
 
 // interface GuessServerMessage extends Message {
 //     type: 'guess'
