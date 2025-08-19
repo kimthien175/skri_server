@@ -50,9 +50,8 @@ export function registerPickWord(socketPkg: SocketPackage) {
                     status,
                     [`henceforth_states.${newState.id}`]: newState,
                     latest_draw_data: {
-                        tail_id: 0,
                         past_steps: {},
-                        current_step: null
+                        black_list: {}
                     }
                 },
                 $push: { outdated_states: oldState },

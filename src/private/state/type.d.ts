@@ -1,17 +1,19 @@
 type DrawData = {
-    tail_id: number
+    tail_id?: number
     past_steps: {
         [key: number]: DrawStep
     };
-    current_step: DrawStep |null
+    current_step?: DrawStep
+    black_list: {
+        [key: number]: boolean
+    }
 }
 
 interface DrawStep {
     id: number
     type: string
     prev_id?: number 
-    next_id?: number
-    secondary_id: string
+    //next_id?: number
 }
 
 interface ClearStep extends DrawStep {

@@ -44,9 +44,8 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
               },
               henceforth_states: { [pregame_state.id]: pregame_state },
               latest_draw_data: {
-                current_step: null,
                 past_steps: {},
-                tail_id: 0
+                black_list: {}
               }
             };
 

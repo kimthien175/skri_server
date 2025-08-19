@@ -14,14 +14,18 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
             if (room == null) throw Error('room not found')
 
+            // check black list, which mean the undo signal comes before the drawStep as target
+            if (room.latest_draw_data.black_list[drawStep.id]) return
+
             var updatePkg: UpdateFilter<ServerRoom> = {
                 $set: {
                     [`latest_draw_data.past_steps.${drawStep.id}`]: drawStep
                 }
             }
 
-            if (room.latest_draw_data.tail_id < drawStep.id)
-                (updatePkg as any).$set['latest_draw_data.tail_id'] = drawStep.id
+            if (room.latest_draw_data.tail_id == null || room.latest_draw_data.tail_id < drawStep.id) {
+                (updatePkg.$set as MatchKeysAndValues<ServerRoom>)['latest_draw_data.tail_id'] = drawStep.id
+            }
 
             // send message if this is the first step and current step ==null
             if (DrawState.isFirstStepEver(room.latest_draw_data)) {
@@ -50,34 +54,29 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
             if (room == null) throw Error('room not found')
 
-            var updatePkg: UpdateFilter<ServerRoom> = {
-                $unset: {
-                    [`latest_draw_data.past_steps.${targetId}`]: ""
-                }
-            }
+            var updatePkg: UpdateFilter<ServerRoom> 
 
-            // check tail id
-            var drawData = room.latest_draw_data
-            if (drawData.tail_id == targetId) {
-                var newTailId: number
-                // find new tail id
-                var tailPrevId = drawData.past_steps[targetId].prev_id
+            // the target hasn't come yet, add to black list for adding step to ignore
+            if (room.latest_draw_data.past_steps[targetId] == null) {
+                updatePkg = {
+                    $set : {
+                    [`latest_draw_data.black_list.${targetId}`]: true
+                }}
 
-                if (tailPrevId == null) {
-                    // performer head
-                    // then just make id is 0
-                    newTailId = 0
-                } else {
-                    newTailId = tailPrevId
-
-                    do {
-                        if (drawData.past_steps[newTailId] != null) break;
-                        newTailId--
-                    } while (newTailId > 0);
+            } else {
+                // past steps has it, delete
+                updatePkg = {
+                    $unset: {
+                        [`latest_draw_data.past_steps.${targetId}`]:""
+                    }
                 }
 
-                updatePkg.$set = {
-                    [`latest_draw_data.tail_id`]: newTailId
+                // check tail id
+                var drawData = room.latest_draw_data
+                if (targetId == drawData.tail_id) {
+                    updatePkg.$set = {
+                        [`latest_draw_data.tail_id`]: drawData.past_steps[targetId].prev_id
+                    }
                 }
             }
 

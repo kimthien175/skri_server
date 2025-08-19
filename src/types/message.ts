@@ -83,7 +83,7 @@ export class PlayerGotBannedMessage extends Message{
 
 export class PlayerStartDrawingMessage extends Message {
     constructor(player_name: string){
-        super('player_start_drawing')
+        super('player_draw')
         this.player_name = player_name
     }
     player_name: string
