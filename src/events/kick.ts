@@ -2,7 +2,6 @@ import { Collection, FindOneAndUpdateOptions, MatchKeysAndValues, ObjectId, Push
 import { SocketPackage } from "../types/socket_package.js";
 import { PrivateRoom, ServerRoom } from "../types/room.js";
 import { PlayerGotKickedMessage } from "../types/message.js";
-import { getVictim } from "./vote_kick.js";
 import { getNewRoomCode } from "../utils/get_room_code.js";
 import { io } from "../socket_io.js";
 import { ServerTicket } from "../types/ticket.js";
@@ -15,7 +14,7 @@ export const registerKick = async function (socketPkg: SocketPackage) {
             var room = await (socketPkg.room as unknown as Collection<PrivateRoom>).findOne(
                 {
                     _id: new ObjectId(socketPkg.roomId),
-                    host_player_id: socketPkg.socket.id,
+                    host_player_id: socketPkg.playerId,
                     players: { $elemMatch: { id: victimId } }
                 }
 
@@ -25,7 +24,7 @@ export const registerKick = async function (socketPkg: SocketPackage) {
                 return
             }
 
-            await kick(getVictim(room.players, victimId), socketPkg, room)
+            await kick(room.players[victimId], socketPkg, room)
             callback({ success: true, data: null })
             return
         } catch (e: any) {
@@ -47,14 +46,12 @@ export async function kick(victim: Player, socketPkg: SocketPackage, room: WithI
     var message = new PlayerGotKickedMessage(victim.name)
 
     var updateFilter: UpdateFilter<ServerRoom> & { $set: MatchKeysAndValues<ServerRoom> } & { $push: PushOperator<ServerRoom> } = {
-        $push: {
-            messages: message
-        },
-        $pull: {
-            players: { id: victim.id },
-            round_white_list: victim.id
-        },
-        $set: { code: new_code }
+        $push: { messages: message },
+        $pull: { round_white_list: victim.id },
+        $set: { code: new_code },
+        $unset: {
+            [`players.${victim.id}`]: ""
+        }
     }
     var options: FindOneAndUpdateOptions & {
         includeResultMetadata: false;
@@ -95,10 +92,10 @@ export async function kick(victim: Player, socketPkg: SocketPackage, room: WithI
         // emit to victim
         console.log(`server ticket ${ticket}`);
         console.log(`client ticket ${ticket.toClientTicket(roomObjId.toString())}`);
-        io.to(victim.id).emit('player_got_kicked', ticket.toClientTicket(roomObjId.toString()))
+        io.to(victim.socket_id).emit('player_got_kicked', ticket.toClientTicket(roomObjId.toString()))
 
         // emit to everyone else
-        io.to(socketPkg.roomId).except(victim.id).emit('player_got_kicked', {
+        io.to(socketPkg.roomId).except(victim.socket_id).emit('player_got_kicked', {
             message, new_code, victim_id: victim.id
         })
     } else {

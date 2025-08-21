@@ -45,26 +45,29 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
                     return
                 }
 
-                if (foundRoom.players.length == foundRoom.settings.players) {
+                if (Object.keys(foundRoom.players).length == foundRoom.settings.players) {
                     resolve({ success: false, data: { type: 'room_full' } })
                     return
                 }
 
-                const socket = socketPkg.socket
                 //#region PLAYER
                 const player = requestPkg.player
-                player.id = socket.id
+                player.id = new ObjectId().toString()
+                player.socket_id = socketPkg.socket.id
+                
                 //player.ip = socket.handshake.address
                 if (player.name === '') {
-                    player.name = (await Random.getWords({word_count: 1, language: requestPkg.lang}))[0];
+                    player.name = (await Random.getWords({ word_count: 1, language: requestPkg.lang }))[0];
                 }
                 //#endregion
 
-                var updateFilter: UpdateFilter<PrivateRoom> = {
+                var updateFilter: UpdateFilter<PrivateRoom> & { $push: NonNullable<UpdateFilter<PrivateRoom>> } = {
                     $push: {
-                        players: player,
                         messages: new PlayerJoinMessage(player.id, player.name),
                         round_white_list: player.id
+                    },
+                    $set: {
+                        [`players.${player.id}`]: player
                     }
                 }
 
@@ -76,7 +79,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
 
                 if ((requestPkg as PrivateRoomRejoinRequest).ticket_id != null) {
                     // modify ticket by new victim_id
-                    updateFilter.$set = { 'tickets.$[b].victim_id': socket.id }
+                    updateFilter.$set = { 'tickets.$[b].victim_id': socketPkg.playerId }
                     options.arrayFilters = [{ 'b.ticket_id': (requestPkg as PrivateRoomRejoinRequest).ticket_id }]
                 }
 
@@ -85,6 +88,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
                 socketPkg.isOwner = false
                 socketPkg.name = player.name
                 socketPkg.isPublicRoom = false
+                socketPkg.playerId = player.id
 
                 var room: WithId<PrivateRoom> | null = await (socketPkg.room as unknown as Collection<PrivateRoom>).findOneAndUpdate(
                     { code: foundRoom.code as string },
@@ -101,7 +105,11 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
                 await socketPkg.socket.join(socketPkg.roomId)
 
                 // notify other players
-                socketPkg.socket.to(socketPkg.roomId).emit('player_join', updateFilter.$push)
+                socketPkg.socket.to(socketPkg.roomId).emit('player_join',
+                    {
+                        message: updateFilter.$push.messages,
+                        player
+                    })
 
                 console.log(room);
 
@@ -117,7 +125,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
                 resolve({ success: true, data: { player, room } })
 
             } catch (e: any) {
-                console.log(`join_private_room: ${socketPkg.socket.id} ${requestPkg}`)
+                console.log(`join_private_room: ${socketPkg.playerId} ${requestPkg}`)
                 console.log(e);
                 resolve({
                     success: false, data: {

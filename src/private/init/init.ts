@@ -7,6 +7,7 @@ import { PrivateRoom } from "../../types/room.js";
 import { NewHostMessage } from "../../types/message.js";
 import { PrivatePreGameState } from "../state/state.js";
 import { getNewRoomCode } from "../../utils/get_room_code.js";
+import { ObjectId } from "mongodb";
 
 export function registerInitPrivateRoom(socketPackage: SocketPackage) {
   socketPackage.socket.on(
@@ -19,7 +20,9 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
           try {
             const player = requestPkg.player;
             //#region PLAYER
-            player.id = socket.id;
+            player.id = new ObjectId().toString()
+            socketPackage.playerId = player.id
+            player.socket_id = socket.id
             //player.ip = socket.handshake.address;
             if (player.name === "") {
               player.name = (await Random.getWords({word_count:1, language: requestPkg.lang}))[0];
@@ -31,7 +34,7 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
             const room: PrivateRoom = {
               code: await getNewRoomCode(Mongo.privateRooms),
               host_player_id: player.id,
-              players: [player],
+              players: {[`${player.id}`]:player},
               messages: [new NewHostMessage(player.id, player.name)],
               ...(await getLastestSpecs()),
               round_white_list: [player.id],

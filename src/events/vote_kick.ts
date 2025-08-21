@@ -17,21 +17,21 @@ export const registerVoteKick = (socketPkg: SocketPackage) =>
                 return
             }
             
-            var victim = getVictim(room.players, victimId)
+            var victim = room.players[ victimId]
 
             if (victim.votekick == undefined){
                 victim.votekick = {
                     voter_id_list: [],
-                    min_vote: Math.floor((room.players.length-1) /2)+1
+                    min_vote: Math.floor((Object.keys(room.players).length-1) /2)+1
                 }
             }
 
-            if (victim.votekick.voter_id_list.includes(socketPkg.socket.id)){
+            if (victim.votekick.voter_id_list.includes(socketPkg.playerId as string)){
                 callback({success: false, reason: 'already voted'})
                 return
             }
 
-            victim.votekick.voter_id_list.push(socketPkg.socket.id)
+            victim.votekick.voter_id_list.push(socketPkg.playerId as string)
 
 // add message
 var message = new PlayerVotekickMessage(socketPkg.name, victim.name, victim.votekick.voter_id_list.length, victim.votekick.min_vote)
@@ -71,12 +71,12 @@ var message = new PlayerVotekickMessage(socketPkg.name, victim.name, victim.vote
         }
     })
 
-export function getVictim(players: Player[], victimId: String): Player {
-    for (let player of players) {
-        if (player.id == victimId) return player
-    }
-    throw new Error('player not found')
-}
+// export function getVictim(players: Player[], victimId: String): Player {
+//     for (let player of players) {
+//         if (player.id == victimId) return player
+//     }
+//     throw new Error('player not found')
+// }
 
 type VotekickResponse = {
     success: true

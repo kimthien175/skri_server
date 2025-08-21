@@ -16,7 +16,7 @@ export function registerStartPrivateGame(socketPkg: SocketPackage) {
             var roomObjId = new ObjectId(socketPkg.roomId)
             var room = await roomCol.findOne({
                 _id: roomObjId,
-                host_player_id: socketPkg.socket.id
+                host_player_id: socketPkg.playerId
             })
             //#endregion
 
@@ -33,18 +33,16 @@ export function registerStartPrivateGame(socketPkg: SocketPackage) {
                 return
             }
 
-            var words = await Random.getWords(room.settings)
 
-            var idList = room.round_white_list
-            var firstPicker = idList[Math.floor(Math.random() * idList.length)]
+            const idList = room.round_white_list
+            const pickerId = idList.length == 1 ? idList[0] : idList[Math.floor(Math.random() * idList.length)]
+            var newState = new PickWordState({
+                player_id: pickerId,
+                words: await Random.getWords(room.settings),
+                round_notify: 1
+            })
 
-            var secondPicker: String
-            do {
-                secondPicker = idList[Math.floor(Math.random() * idList.length)]
-            } while (secondPicker == firstPicker)
-            var newState = new PickWordState({ player_id: firstPicker, words: words.slice(0, WordsOptions), round_notify: 1 })
-
-            var status: StateStatus = {
+            const status: StateStatus = {
                 current_state_id: room.status.current_state_id,
                 command: 'end',
                 date: new Date(),
@@ -63,10 +61,13 @@ export function registerStartPrivateGame(socketPkg: SocketPackage) {
 
             callback({ success: true })
 
-            io.to(newState.player_id).emit('new_states', { status, henceforth_states: { [newState.id]: newState } })
+
+            const pickerSocketId = room.players[pickerId].socket_id
+            console.log(`[START GAME]: send to picker socket id ${pickerSocketId}`);
+            io.to(pickerSocketId).emit('new_states', { status, henceforth_states: { [newState.id]: newState } })
 
             delete newState.words
-            io.to(socketPkg.roomId).except(newState.player_id).emit('new_states', { status, henceforth_states: { [newState.id]: newState } })
+            io.to(socketPkg.roomId).except(pickerSocketId).emit('new_states', { status, henceforth_states: { [newState.id]: newState } })
 
             //#endregion
         } catch (e) {

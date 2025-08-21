@@ -23,7 +23,7 @@ type ClassProperties<C> = {
 };
 
 export interface ServerRoom {
-  players: Player[];
+  players: {[key: string]: Player};
   settings: RoomSettings;
   messages: Message[];
   status: StateStatus;

@@ -1,6 +1,7 @@
 interface InitPlayer{
     id: string 
     name: string
+    socket_id: string
 }
 
 export interface Player extends InitPlayer{
@@ -9,7 +10,7 @@ export interface Player extends InitPlayer{
         eyes: number;
         mouth: number;
     },
-    point?: number
+    score?: number
     votekick?: VoteKick
 }
 

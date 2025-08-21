@@ -24,7 +24,7 @@ export function registerPickWord(socketPkg: SocketPackage) {
 
             // check state, current state is pick word, which mean room.status.next_state_id is pickword
             var currentState: PickWordState = getRunningState(room) as PickWordState
-            if (currentState.type != PickWordState.TYPE || currentState.player_id != socketPkg.socket.id || !currentState.words?.includes(word)) {
+            if (currentState.type != PickWordState.TYPE || currentState.player_id != socketPkg.playerId || !currentState.words?.includes(word)) {
                 callback({ success: false, reason: 'room not found' })
                 return
             }
@@ -79,7 +79,9 @@ export function registerPickWord(socketPkg: SocketPackage) {
             callback({ success: true })
 
             console.log(`[PICK_WORD]: send to chosen player ${newState}`);
-            io.to(socketPkg.socket.id).emit('new_states', { status, henceforth_states: { [newState.id]: newState } })
+
+
+            io.to(room.players[currentState.player_id].socket_id).emit('new_states', { status, henceforth_states: { [newState.id]: newState } })
 
             newState.removeSensitiveProperties()
 

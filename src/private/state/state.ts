@@ -70,7 +70,7 @@ export class DrawState extends GameState {
         if (arg.word_mode != 'Hidden')
             this.hint = arg.word.replaceAll(/\S/g, '_')
 
-        //this.draw_data = {tail_id:0, past_steps:{}, current_step: null}
+        this.points = {}
     }
     word?: string
     hint?: string
@@ -87,4 +87,8 @@ export class DrawState extends GameState {
     static isFirstStepEver(drawData: DrawData): boolean {
         return Object.keys(drawData.past_steps).length == 0 && drawData.current_step == null
     }
+
+    points: PlayersPointData
 }
+
+export type PlayersPointData = { [key: string]: number }

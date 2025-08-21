@@ -11,19 +11,17 @@ export function registerHint(socketPkg: SocketPackage) {
             var _id = new ObjectId(socketPkg.roomId);
             var room = await socketPkg.room.findOne({ _id });
 
-            if (room == null) {
-                console.log("[HINT]: ", "room not found");
-                return;
-            }
+            if (room == null) throw Error("room not found");
 
             var state = getRunningState(room) as DrawState &
                 Required<Pick<DrawState, "hint" | "word">>;
             if (
                 state.type != DrawState.TYPE ||
-                state.player_id != socketPkg.socket.id ||
+                state.player_id != socketPkg.playerId ||
                 state.hint[charIndex] != "_"
-            )
-                return;
+            ) {
+                throw Error('hint error')
+            }
 
             //save to db
             await socketPkg.room.updateOne(

@@ -34,4 +34,6 @@ export class SocketPackage {
     _isOwner?: boolean
     set isOwner(value: boolean) { this._isOwner = value }
     get isOwner() { return this._isOwner === true }
+
+    playerId?: string
 }

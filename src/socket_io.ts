@@ -10,13 +10,13 @@ import { registerJoinPrivateRoom } from "./private/join/join.js";
 import { registerListenChatMessages } from "./events/player_chat.js";
 import { registerChangeSettings } from "./events/host_change_settings.js";
 import { registerStartPrivateGame } from './private/start/start_game.js'
-//import { registerChooseWord } from './events/choose_word.js'
 import { registerPlayerDraw } from "./events/player_draw.js";
 import { registerVoteKick } from "./events/vote_kick.js";
 import { registerKick } from "./events/kick.js";
 import { registerBan } from "./events/ban.js";
 import { registerPickWord } from "./events/pick_word.js";
 import { registerHint } from "./events/hint.js";
+import { registerListenGuessMessages } from "./events/player_guess.js";
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -36,7 +36,7 @@ io.on("connection", (socket) => {
 
   console.log("SOCKET.IO: CONNECTED");
   socket.on("disconnect", () => {
-    console.log(`player ${socket.id} disconnected`);
+    console.log(`player with socket ID ${socket.id} disconnected`);
 
     // TODO: remove this 'if' on production
     if (socketPackage.roomId == null) return;
@@ -58,6 +58,7 @@ io.on("connection", (socket) => {
   registerPickWord(socketPackage)
   registerHint(socketPackage)
   registerPlayerDraw(socketPackage)
+  registerListenGuessMessages(socketPackage)
 });
 
 export { httpServer, io };

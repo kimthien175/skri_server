@@ -89,6 +89,25 @@ export class PlayerStartDrawingMessage extends Message {
     player_name: string
 }
 
+export class PlayerGuessRightMessage extends Message {
+    constructor(player_id: string, player_name: string, point: number){
+        super('player_guess_right')
+        this.player_id = player_id
+        this.player_name = player_name
+        this.point = point
+    }
+    player_id: string
+    player_name: string
+    point: number
+}
+
+// export class PlayerGuessCloseMessage extends Message {
+//     constructor(player_name: string){
+//         super('player_guess_close')
+//         this.player_name = player_name
+//     }
+//     player_name: string
+// }
 // interface GuessServerMessage extends Message {
 //     type: 'guess'
 //     player_id: string

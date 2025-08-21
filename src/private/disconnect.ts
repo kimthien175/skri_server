@@ -20,10 +20,10 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
         }
 
         // if player disconnected by being kicked or banned, do nothing at all
-        if (foundRoomDoc.players.find((e) => e.id == socketPkg.socket.id) === undefined) return
+        if (foundRoomDoc.players[socketPkg.playerId as string] == null) return
 
         //#region CASE 1: ALONE PLAYER IN ROOM: DELETE ROOM
-        if (foundRoomDoc.players.length <= 1) {
+        if (Object.keys(foundRoomDoc.players).length <= 1) {
             console.log('DISCONNECT CASE 1');
             // delete room and move to endedPrivateRoom
             await Promise.all([
@@ -37,16 +37,14 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
 
         // no need to delete room, player leave
         // prepare message for case
-        const playerLeaveMsg = new PlayerLeaveMessage(socketPkg.socket.id, socketPkg.name)
+        const playerLeaveMsg = new PlayerLeaveMessage(socketPkg.playerId as string, socketPkg.name)
         var messages: Message[] = [playerLeaveMsg]
         var updateFilter: UpdateFilter<PrivateRoom> = {
             $push: {
                 messages: { $each: messages }
             },
-            $pull: {
-                players: { id: socketPkg.socket.id },
-                round_white_list: socketPkg.socket.id
-            }
+            $pull: { round_white_list: socketPkg.playerId },
+            $unset: { [`players.${socketPkg.playerId}`]: "" }
         }
 
         //#region CASE 2: ROOM HAS MANY PLAYERS, THIS PLAYER IS HOST
@@ -56,13 +54,14 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
             // get randomized player
             var newOwnerIndex: number
             var players = foundRoomDoc.players
+            const idList = Object.keys(players)
             do {
-                newOwnerIndex = Math.floor(Math.random() * players.length)
-            } while (players[newOwnerIndex].id == socketPkg.socket.id)
+                newOwnerIndex = Math.floor(Math.random() * idList.length)
+            } while (players[idList[newOwnerIndex]].id == socketPkg.playerId)
 
-            var newOwnerId = players[newOwnerIndex].id
+            var newOwnerId = players[idList[newOwnerIndex]].id
 
-            const newHostMsg = new NewHostMessage(newOwnerId, players[newOwnerIndex].name)
+            const newHostMsg = new NewHostMessage(newOwnerId, players[newOwnerId].name)
 
             updateFilter.$set = { host_player_id: newOwnerId }
             messages.push(newHostMsg)
@@ -77,13 +76,13 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
             // notify every one
             socketPkg.io.to(socketPkg.roomId).emit('player_leave', playerLeaveMsg)
 
-            console.log(`onLeavingPrivateRoom: Remove player ${socketPkg.socket.id} out of room ${socketPkg.roomId}`)
+            console.log(`onLeavingPrivateRoom: Remove player ${socketPkg.playerId} out of room ${socketPkg.roomId}`)
             //#endregion
 
             socketPkg.io.to(socketPkg.roomId).except(newOwnerId).emit('new_host', newHostMsg)
 
             newHostMsg.settings = foundRoomDoc.settings
-            socketPkg.io.to(newOwnerId).emit('new_host', newHostMsg)
+            socketPkg.io.to(players[newOwnerId].socket_id).emit('new_host', newHostMsg)
 
             return
         }
@@ -97,7 +96,7 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
         // notify every one
         socketPkg.io.to(socketPkg.roomId).emit('player_leave', playerLeaveMsg)
 
-        console.log(`onLeavingPrivateRoom: Remove player ${socketPkg.socket.id} out of room ${socketPkg.roomId}`);
+        console.log(`onLeavingPrivateRoom: Remove player ${socketPkg.playerId} out of room ${socketPkg.roomId}`);
         //#endregion
     } catch (e) {
         console.log('disconnect');
