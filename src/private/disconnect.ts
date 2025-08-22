@@ -79,10 +79,12 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
             console.log(`onLeavingPrivateRoom: Remove player ${socketPkg.playerId} out of room ${socketPkg.roomId}`)
             //#endregion
 
-            socketPkg.io.to(socketPkg.roomId).except(newOwnerId).emit('new_host', newHostMsg)
+            const newOwnerSocketId = players[newOwnerId].socket_id
+
+            socketPkg.io.to(socketPkg.roomId).except(newOwnerSocketId).emit('new_host', newHostMsg)
 
             newHostMsg.settings = foundRoomDoc.settings
-            socketPkg.io.to(players[newOwnerId].socket_id).emit('new_host', newHostMsg)
+            socketPkg.io.to(newOwnerSocketId).emit('new_host', newHostMsg)
 
             return
         }

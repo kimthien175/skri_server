@@ -54,20 +54,21 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
             if (room == null) throw Error('room not found')
 
-            var updatePkg: UpdateFilter<ServerRoom> 
+            var updatePkg: UpdateFilter<ServerRoom>
 
             // the target hasn't come yet, add to black list for adding step to ignore
             if (room.latest_draw_data.past_steps[targetId] == null) {
                 updatePkg = {
-                    $set : {
-                    [`latest_draw_data.black_list.${targetId}`]: true
-                }}
+                    $set: {
+                        [`latest_draw_data.black_list.${targetId}`]: true
+                    }
+                }
 
             } else {
                 // past steps has it, delete
                 updatePkg = {
                     $unset: {
-                        [`latest_draw_data.past_steps.${targetId}`]:""
+                        [`latest_draw_data.past_steps.${targetId}`]: ""
                     }
                 }
 
@@ -141,7 +142,7 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
         }
     })
 
-    socketPkg.socket.on('draw:end_current', async () => {
-        socketPkg.socket.to(socketPkg.roomId).emit('draw:end_current')
-    })
+    socketPkg.socket.on('draw:end_current', async (data) =>
+        socketPkg.socket.to(socketPkg.roomId).emit('draw:end_current', data)
+    )
 }
