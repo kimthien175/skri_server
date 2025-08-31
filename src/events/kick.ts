@@ -47,10 +47,10 @@ export async function kick(victim: Player, socketPkg: SocketPackage, room: WithI
 
     var updateFilter: UpdateFilter<ServerRoom> & { $set: MatchKeysAndValues<ServerRoom> } & { $push: PushOperator<ServerRoom> } = {
         $push: { messages: message },
-        $pull: { round_white_list: victim.id },
         $set: { code: new_code },
         $unset: {
-            [`players.${victim.id}`]: ""
+            [`players.${victim.id}`]: "",
+            [`current_round_done_players.${victim.id}`]:""
         }
     }
     var options: FindOneAndUpdateOptions & {

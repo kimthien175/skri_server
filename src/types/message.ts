@@ -101,20 +101,22 @@ export class PlayerGuessRightMessage extends Message {
     point: number
 }
 
-// export class PlayerGuessCloseMessage extends Message {
-//     constructor(player_name: string){
-//         super('player_guess_close')
-//         this.player_name = player_name
-//     }
-//     player_name: string
-// }
-// interface GuessServerMessage extends Message {
-//     type: 'guess'
-//     player_id: string
-//     guess: string
-// }
+export class PlayerLikeMessage extends Message{
+    constructor(player_name: string){
+        super(PlayerLikeMessage.TYPE)
+        this.player_name = player_name
+        this.performer_point = 10 
+    }
+    static TYPE = 'player_like'
+    player_name: string
+    performer_point: number
+}
 
-// interface CorrectGuessMessageFromServer extends Message {
-//     type: 'correct_guess'
-//     player_id: string
-// }
+export class PlayerDislikeMessage extends Message {
+    constructor(player_name: string) {
+        super(PlayerDislikeMessage.TYPE)
+        this.player_name = player_name
+    }
+    static TYPE = 'player_dislike'
+    player_name: string
+}

@@ -10,8 +10,9 @@ export interface Player extends InitPlayer{
         eyes: number;
         mouth: number;
     },
-    score?: number
+    score: number
     votekick?: VoteKick
+    winner?: boolean
 }
 
 interface VoteKick{

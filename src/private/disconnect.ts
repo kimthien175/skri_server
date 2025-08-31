@@ -43,7 +43,6 @@ export async function onLeavingPrivateRoom(socketPkg: SocketPackage) {
             $push: {
                 messages: { $each: messages }
             },
-            $pull: { round_white_list: socketPkg.playerId },
             $unset: { [`players.${socketPkg.playerId}`]: "" }
         }
 

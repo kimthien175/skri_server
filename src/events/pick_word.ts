@@ -1,10 +1,11 @@
 // import { Collection } from "mongodb";
 
-import { MatchKeysAndValues, ObjectId, UpdateFilter } from "mongodb";
+import { Filter, ObjectId, UpdateFilter } from "mongodb";
 import { SocketPackage } from "../types/socket_package";
 import { DrawState, PickWordState } from "../private/state/state.js";
-import { getOutdatedState, getRunningState, ServerRoom, StateStatus } from "../types/room.js";
+import { doCurrentRoundHaveAllPlayersDrawed, getRunningState, ServerRoom, StateStatus } from "../types/room.js";
 import { io } from "../socket_io.js";
+import { Mutable } from "../types/type";
 
 export function registerPickWord(socketPkg: SocketPackage) {
     socketPkg.socket.on('pick_word', async (word: string, callback: (res: { success: true } | { success: false, reason: any }) => void) => {
@@ -12,83 +13,63 @@ export function registerPickWord(socketPkg: SocketPackage) {
         // set state
         // emit to players
         try {
-            var roomObjId = new ObjectId(socketPkg.roomId)
-            var room = await socketPkg.room.findOne({
-                _id: roomObjId
-            })
+            var _id:Filter<ServerRoom> = { _id: new ObjectId(socketPkg.roomId) }
+            var room = await socketPkg.room.findOne(_id)
 
-            if (room == null) {
-                callback({ success: false, reason: 'room not found' })
-                return
-            }
+            if (room == null)
+                throw Error('room not found')
 
             // check state, current state is pick word, which mean room.status.next_state_id is pickword
-            var currentState: PickWordState = getRunningState(room) as PickWordState
-            if (currentState.type != PickWordState.TYPE || currentState.player_id != socketPkg.playerId || !currentState.words?.includes(word)) {
-                callback({ success: false, reason: 'room not found' })
-                return
-            }
+            var pickWordState: PickWordState = room.henceforth_states[(room.status as StateStatus & {command: 'end'}).next_state_id] as PickWordState
+            if (pickWordState.type != PickWordState.TYPE || pickWordState.player_id != socketPkg.playerId || !pickWordState.words?.includes(word))
+                throw Error('room not found')
+            pickWordState.end_date = new Date()
 
-            // switch current_state_id
-            var oldState = getOutdatedState(room)
-
-            var newState = new DrawState({
-                player_id: currentState.player_id,
+            var drawState = new DrawState({
+                player_id: pickWordState.player_id,
                 word,
-                word_mode: room.settings.word_mode
+                word_mode: room.settings.word_mode,
+                end_state: doCurrentRoundHaveAllPlayersDrawed(room) ? ( room.current_round == room.settings.rounds ? 'end_game': 'end_round'): null
             })
 
             var status: StateStatus = {
-                current_state_id: currentState.id,
+                current_state_id: pickWordState.id,
                 command: 'end',
-                date: new Date(),
-                next_state_id: newState.id
+                date: pickWordState.end_date,
+                next_state_id: drawState.id
             }
 
-            var updatePkg: UpdateFilter<ServerRoom> = {
+            var outdatedState = room.henceforth_states[room.status.current_state_id]
+
+            var updatePkg: UpdateFilter<ServerRoom> & { $set: Mutable<NonNullable<UpdateFilter<ServerRoom>['$set']>> } = {
                 $set: {
                     status,
-                    [`henceforth_states.${newState.id}`]: newState,
-                    latest_draw_data: {
-                        past_steps: {},
-                        black_list: {}
-                    }
+                    [`henceforth_states.${drawState.id}`]: drawState
                 },
-                $push: { outdated_states: oldState },
-                $pull: { round_white_list: currentState.player_id },
-                $unset: { [`henceforth_states.${oldState.id}`]: 1 }
-            }
-
-
-            // look in outdated_states for the last DrawState
-            var oldStates = room.outdated_states;
-            for (var i = oldStates.length - 1; i >= 0; i--) {
-                if (oldStates[i].type == DrawState.TYPE) {
-                    ((updatePkg.$set as ServerRoom).outdated_states as any)[`${i}.draw_data`] = room.latest_draw_data
-                    break;
+                $push: { outdated_states: outdatedState },
+                $unset: {
+                    [`henceforth_states.${outdatedState.id}`]: ""
                 }
             }
 
-            var result = await socketPkg.room.updateOne({ _id: roomObjId }, updatePkg)
+            var result = await socketPkg.room.updateOne(_id, updatePkg)
 
-            if (result.modifiedCount != 1) {
-                callback({ success: false, reason: 'update failed' })
-                return
-            }
+            if (result.modifiedCount != 1)
+                throw Error('update failed')
 
             callback({ success: true })
 
-            console.log(`[PICK_WORD]: send to chosen player ${newState}`);
+            console.log(`[PICK_WORD]: send to chosen player ${drawState}`);
 
 
-            io.to(room.players[currentState.player_id].socket_id).emit('new_states', { status, henceforth_states: { [newState.id]: newState } })
+            io.to(room.players[pickWordState.player_id].socket_id).emit('new_states', { status, henceforth_states: { [drawState.id]: drawState } })
 
-            newState.removeSensitiveProperties()
+            drawState.removeSensitiveProperties()
 
-            console.log(`[PICK_WORD]: send to other players ${newState}`);
+            console.log(`[PICK_WORD]: send to other players ${drawState}`);
 
             socketPkg.socket.to(socketPkg.roomId)
-                .emit('new_states', { status, henceforth_states: { [newState.id]: newState } })
+                .emit('new_states', { status, henceforth_states: { [drawState.id]: drawState } })
         } catch (e: any) {
             console.log(`[PICK_WORD]: ${e}`);
             callback({ success: false, reason: e })

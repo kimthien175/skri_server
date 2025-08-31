@@ -42,10 +42,11 @@ async function ban(victimId: string, socketPkg: SocketPackage, room: WithId<Serv
 
     var updateFilter: UpdateFilter<ServerRoom> = {
         $push: { messages: message },
-        $pull: { round_white_list: victimId },
+        //$pull: { round_white_list: victimId },
         $set: { code: new_code },
         $unset: {
-            [`players.${victimId}`]: ""
+            [`players.${victimId}`]: "",
+            [`current_round_done_players.${victimId}`]:""
         }
     }
 

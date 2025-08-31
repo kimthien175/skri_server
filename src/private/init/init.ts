@@ -21,29 +21,30 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
             const player = requestPkg.player;
             //#region PLAYER
             player.id = new ObjectId().toString()
-            socketPackage.playerId = player.id
             player.socket_id = socket.id
+            player.score = 0
             //player.ip = socket.handshake.address;
             if (player.name === "") {
-              player.name = (await Random.getWords({word_count:1, language: requestPkg.lang}))[0];
+              player.name = (await Random.getWords({ word_count: 1, language: requestPkg.lang }))[0];
             }
             //#endregion
 
             var pregame_state = new PrivatePreGameState();
+            pregame_state.start_date = new Date()
 
             const room: PrivateRoom = {
               code: await getNewRoomCode(Mongo.privateRooms),
               host_player_id: player.id,
-              players: {[`${player.id}`]:player},
+              players: { [`${player.id}`]: player },
               messages: [new NewHostMessage(player.id, player.name)],
               ...(await getLastestSpecs()),
-              round_white_list: [player.id],
+              current_round_done_players: {},
               current_round: 1,
               outdated_states: [],
               status: {
                 current_state_id: pregame_state.id,
                 command: "start",
-                date: new Date(),
+                date: pregame_state.start_date,
               },
               henceforth_states: { [pregame_state.id]: pregame_state },
               latest_draw_data: {
@@ -60,6 +61,7 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
             socketPackage.name = player.name;
             socketPackage.isOwner = true;
             socketPackage.isPublicRoom = false;
+            socketPackage.playerId = player.id
 
             console.log(instertResult.insertedId.toString());
 

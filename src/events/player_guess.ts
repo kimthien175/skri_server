@@ -1,46 +1,73 @@
 import { SocketPackage } from "../types/socket_package.js";
 import { Message, PlayerChatMessage, PlayerGuessRightMessage } from "../types/message.js";
-import { ObjectId } from "mongodb";
-import { getRunningState } from "../types/room.js";
+import { Filter, ObjectId, UpdateFilter } from "mongodb";
+import { getRunningState, ServerRoom, StateStatus } from "../types/room.js";
 import { DrawState, PlayersPointData } from "../private/state/state.js";
 import { io } from "../socket_io.js";
+import { endDrawState } from "./end_draw_state.js";
+import { Mutable } from "../types/type.js";
 
 export function registerListenGuessMessages(socketPkg: SocketPackage) {
     socketPkg.socket.on('player_guess', async function (guess: string, callback) {
         try {
             // verify player guess, send system message if player guess close or right
             // end state if all player guess rights
-            var _id = { _id: new ObjectId(socketPkg.roomId) }
+            var _id: Filter<ServerRoom> = { _id: new ObjectId(socketPkg.roomId) }
             var room = await socketPkg.room.findOne(_id)
 
             if (room == null) throw Error('room not found')
 
-            var state: DrawState = getRunningState(room) as DrawState
-            if (state.type != DrawState.TYPE) throw Error('wrong state')
+            var state = getRunningState(room) as DrawState
 
-            var guessResult = checkGuessing(state.word as string, guess)
+            if (state.type != DrawState.TYPE) throw Error('wrong DRAW state')
 
             if (state.points[socketPkg.playerId as string] != null) return
+
+            var guessResult = checkGuessing(state.word as string, guess)
 
             var msg: Message
 
             // the first one guess right: 100, then second: 90, third: 80, and the rest: 70
             if (guessResult == GuessResult.right) {
                 var point = grantPoint(state.points, socketPkg.playerId as string)
+
+                var updatePkg: Mutable<UpdateFilter<ServerRoom> & { $set: NonNullable<UpdateFilter<ServerRoom>['$set']> }>
+
+                state.points[socketPkg.playerId as string] = point
+                if (DrawState.isEndState(state, room.players)) {
+                    var result = await endDrawState(socketPkg, room, state)
+                    updatePkg = result.updatePackage
+
+                    console.log(updatePkg);
+
+                    io.to(socketPkg.roomId).emit('new_states', {
+                        status: result.updatePackage.$set.status,
+                        henceforth_states: {
+                            [result.state.id]: result.state
+                        }
+                    })
+                } else {
+                    updatePkg = { $set: {} }
+                }
+
                 var playerScore = room.players[socketPkg.playerId as string].score
+
+                updatePkg.$set = {
+                    ...updatePkg.$set,
+                    [`players.${socketPkg.playerId}.score`]: playerScore + point,
+                    [`henceforth_states.${state.id}.points.${socketPkg.playerId}`]: point
+                }
+
                 msg = new PlayerGuessRightMessage(socketPkg.playerId as string, socketPkg.name, point)
 
-                await socketPkg.room.updateOne(_id, {
-                    $set: {
-                        [`players.${socketPkg.playerId}.score`]: playerScore != null ? playerScore + point : point,
-                        [`henceforth_states.${state.id}.points.${socketPkg.playerId}`]: point
-                    },
-                    $push: {
-                        messages: msg
-                    }
-                })
+                updatePkg.$push = {
+                    ...updatePkg.$push,
+                    messages: msg
+                }
+
+                await socketPkg.room.updateOne(_id, updatePkg)
                 callback(guessResult)
-                io.to(socketPkg.roomId).emit('system_message', msg)
+                io.to(socketPkg.roomId).emit('guess_right', msg)
                 return
             }
 
@@ -107,7 +134,7 @@ function checkGuessing(word: string, guess: string): GuessResult {
 
 function grantPoint(data: PlayersPointData, playerId: string): number {
     var players = Object.keys(data)
-    if (players.length == 0) return 100
+    if (players.length == 0) return 300
 
     if (players.length == 1) return 90
     if (players.length == 2) return 80

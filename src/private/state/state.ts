@@ -4,6 +4,7 @@ import { ObjectId } from "mongodb"
 import { ServerRoom } from "../../types/room"
 import { Random } from "../../utils/random/random"
 import { WordMode } from "../../types/type"
+import { Player } from "../../types/player"
 
 //START ROUND
 
@@ -63,7 +64,7 @@ export class PickWordState extends GameState {
 }
 
 export class DrawState extends GameState {
-    constructor(arg: { player_id: string, word: string, word_mode: WordMode }) {
+    constructor(arg: { player_id: string, word: string, word_mode: WordMode, end_state: DrawStateEnd }) {
         super(DrawState.TYPE)
         this.player_id = arg.player_id
         this.word = arg.word
@@ -71,17 +72,19 @@ export class DrawState extends GameState {
             this.hint = arg.word.replaceAll(/\S/g, '_')
 
         this.points = {}
+        this.end_state = arg.end_state
+        this.liked_by = []
     }
     word?: string
     hint?: string
     player_id: string
-    static TYPE = 'draw'
+    liked_by: string[]
+    static TYPE = "draw"
 
     removeSensitiveProperties() {
         delete this.word
     }
 
-    //TODO: when draw state end, move draw data to this
     draw_data?: DrawData
 
     static isFirstStepEver(drawData: DrawData): boolean {
@@ -89,6 +92,17 @@ export class DrawState extends GameState {
     }
 
     points: PlayersPointData
+    end_state: DrawStateEnd
+
+    static isEndState(state: DrawState, players: {[id: string]: Player}): boolean{
+        for (var id in players){
+            if (id == state.player_id) continue;
+            if (state.points[id] == null) return false
+        }
+        return true
+    }
 }
+
+type DrawStateEnd = 'end_round' | 'end_game' | null
 
 export type PlayersPointData = { [key: string]: number }

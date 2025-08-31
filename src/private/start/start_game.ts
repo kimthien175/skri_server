@@ -1,9 +1,9 @@
-import { Collection, MatchKeysAndValues, ObjectId, UpdateFilter } from "mongodb";
+import { Collection, Filter, MatchKeysAndValues, ObjectId, UpdateFilter } from "mongodb";
 import { SocketPackage } from "../../types/socket_package.js";
 import { Random } from "../../utils/random/random.js";
 import { RoomSettings } from "../../types/type.js";
 import { PickWordState, PrivatePreGameState } from "../state/state.js";
-import { PrivateRoom, StateStatus } from "../../types/room.js";
+import { getRunningState, PrivateRoom, ServerRoom, StateStatus } from "../../types/room.js";
 import { io } from "../../socket_io.js";
 
 const WordsOptions = 3;
@@ -13,63 +13,58 @@ export function registerStartPrivateGame(socketPkg: SocketPackage) {
         try {
             //#region PREPARE ROOM
             var roomCol = socketPkg.room as any as Collection<PrivateRoom>
-            var roomObjId = new ObjectId(socketPkg.roomId)
-            var room = await roomCol.findOne({
-                _id: roomObjId,
+            var filter: Filter<ServerRoom> = {
+                _id: new ObjectId(socketPkg.roomId),
                 host_player_id: socketPkg.playerId
-            })
+            }
+            var room = await roomCol.findOne(filter)
             //#endregion
 
-            //#region CREATE STATE AND NEXT STATE
-            // create new state, save to db, callback and emit to everyone else in the room
+            if (room == null) throw Error('You are not room host')
 
-            if (room == null) {
-                callback({ success: false, reason: 'You are not room host' })
-                return
-            }
-
-            if (room.henceforth_states[room.status.current_state_id].type != PrivatePreGameState.TYPE) {
-                callback({ success: false, reason: 'wrong game state' })
-                return
-            }
+            var preGameState = getRunningState(room)
+            if (preGameState.type != PrivatePreGameState.TYPE) throw Error('wrong game state')
+            preGameState.end_date = new Date()
 
 
-            const idList = room.round_white_list
-            const pickerId = idList.length == 1 ? idList[0] : idList[Math.floor(Math.random() * idList.length)]
+            const idList = Object.keys(room.players)
+            if (idList.length <= 1) throw Error('not enough player to start game')
+            const pickerId = idList[Math.floor(Math.random() * idList.length)]
+
             var newState = new PickWordState({
                 player_id: pickerId,
                 words: await Random.getWords(room.settings),
                 round_notify: 1
             })
 
-            const status: StateStatus = {
-                current_state_id: room.status.current_state_id,
-                command: 'end',
-                date: new Date(),
-                next_state_id: newState.id
-            }
-
             var updateFilter: UpdateFilter<PrivateRoom> & { $set: MatchKeysAndValues<PrivateRoom> } = {
                 $set: {
-                    status,
-                    [`henceforth_states.${newState.id}`]: newState
+                    status: {
+                        current_state_id: preGameState.id,
+                        command: 'end',
+                        date: preGameState.end_date,
+                        next_state_id: newState.id
+                    },
+                    [`henceforth_states.${newState.id}`]: newState,
+                    current_round_done_players: { [pickerId]: true }
                 }
             }
 
             // save to db and emit
-            await roomCol.updateOne({ _id: roomObjId }, updateFilter)
+            await roomCol.updateOne(filter, updateFilter)
 
             callback({ success: true })
 
-
             const pickerSocketId = room.players[pickerId].socket_id
+            const clientsPkg = { status: updateFilter.$set.status, henceforth_states: { [newState.id]: newState } }
+
             console.log(`[START GAME]: send to picker socket id ${pickerSocketId}`);
-            io.to(pickerSocketId).emit('new_states', { status, henceforth_states: { [newState.id]: newState } })
+
+            io.to(pickerSocketId).emit('new_states', clientsPkg)
 
             delete newState.words
-            io.to(socketPkg.roomId).except(pickerSocketId).emit('new_states', { status, henceforth_states: { [newState.id]: newState } })
+            io.to(socketPkg.roomId).except(pickerSocketId).emit('new_states', clientsPkg)
 
-            //#endregion
         } catch (e) {
             console.log(`[START_GAME]: ${e}`);
             callback({ success: false, reason: e })

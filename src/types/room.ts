@@ -15,6 +15,7 @@ export type StateStatus = {
       command: "end";
       date: Date;
       next_state_id: GameState["id"];
+      bonus?: any
     }
 );
 
@@ -31,11 +32,18 @@ export interface ServerRoom {
   outdated_states: GameState[];
   code: String;
   system: RoomSystem;
-  round_white_list: string[];
+  current_round_done_players: {[id: string]: true};
   current_round: number;
   tickets?: ServerTicket[];
   used_words?: string[]
   latest_draw_data: DrawData
+}
+
+export function doCurrentRoundHaveAllPlayersDrawed(room: ServerRoom): boolean{
+  for (let playerId in room.players){
+    if (!room.current_round_done_players[playerId]) return false
+  }
+  return true
 }
 
 export function getRunningState(room: ServerRoom): GameState {
@@ -44,11 +52,11 @@ export function getRunningState(room: ServerRoom): GameState {
   return room.henceforth_states[room.status.current_state_id];
 }
 
-export function getOutdatedState(room: ServerRoom): GameState {
-  var outdatedState = room.henceforth_states[room.status.current_state_id];
-  outdatedState.end_date = room.status.date;
-  return outdatedState;
-}
+// export function getOutdatedState(room: ServerRoom): GameState {
+//   var outdatedState = room.henceforth_states[room.status.current_state_id];
+//   outdatedState.end_date = room.status.date;
+//   return outdatedState;
+// }
 
 /** ful doc: including states*/
 export interface PublicRoom extends ServerRoom {}

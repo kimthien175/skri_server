@@ -54,6 +54,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
                 const player = requestPkg.player
                 player.id = new ObjectId().toString()
                 player.socket_id = socketPkg.socket.id
+                player.score = 0
                 
                 //player.ip = socket.handshake.address
                 if (player.name === '') {
@@ -64,7 +65,6 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
                 var updateFilter: UpdateFilter<PrivateRoom> & { $push: NonNullable<UpdateFilter<PrivateRoom>> } = {
                     $push: {
                         messages: new PlayerJoinMessage(player.id, player.name),
-                        round_white_list: player.id
                     },
                     $set: {
                         [`players.${player.id}`]: player

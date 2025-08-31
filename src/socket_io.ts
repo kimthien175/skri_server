@@ -17,6 +17,8 @@ import { registerBan } from "./events/ban.js";
 import { registerPickWord } from "./events/pick_word.js";
 import { registerHint } from "./events/hint.js";
 import { registerListenGuessMessages } from "./events/player_guess.js";
+import { registerEndDrawState } from "./events/end_draw_state.js";
+import { registerLikeDislike} from "./events/like_dislike.js";
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -59,6 +61,8 @@ io.on("connection", (socket) => {
   registerHint(socketPackage)
   registerPlayerDraw(socketPackage)
   registerListenGuessMessages(socketPackage)
+  registerEndDrawState(socketPackage)
+  registerLikeDislike(socketPackage)
 });
 
 export { httpServer, io };

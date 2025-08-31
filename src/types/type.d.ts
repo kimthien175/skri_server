@@ -87,3 +87,7 @@ interface PrivateRoomRejoinRequest extends RoomRequestPackage{
     ticket_id: string 
     room_id: string
 }
+
+type Mutable<T> = {
+    -readonly [K in keyof T]: T[K];
+};
