@@ -20,7 +20,7 @@ export async function registerLikeDislike(socketPkg: SocketPackage) {
             if (state.type != DrawState.TYPE || state.liked_by.includes(socketPkg.playerId as string))
                 throw Error('wrong state')
 
-            var msg: PlayerLikeMessage | PlayerDislikeMessage = flag ? new PlayerLikeMessage(socketPkg.name) : new PlayerDislikeMessage(socketPkg.name)
+            var msg: PlayerLikeMessage | PlayerDislikeMessage = flag ? new PlayerLikeMessage(socketPkg.playerId as string, socketPkg.name) : new PlayerDislikeMessage(socketPkg.name)
             var updatePkg: UpdateFilter<ServerRoom> & { $push: Mutable<NonNullable<UpdateFilter<ServerRoom>['$push']>> } = {
                 $push: { messages: msg }
             }

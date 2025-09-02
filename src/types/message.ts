@@ -102,12 +102,14 @@ export class PlayerGuessRightMessage extends Message {
 }
 
 export class PlayerLikeMessage extends Message{
-    constructor(player_name: string){
+    constructor(player_id: string, player_name: string){
         super(PlayerLikeMessage.TYPE)
         this.player_name = player_name
         this.performer_point = 10 
+        this.player_id = player_id
     }
     static TYPE = 'player_like'
+    player_id: string
     player_name: string
     performer_point: number
 }

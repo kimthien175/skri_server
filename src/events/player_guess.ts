@@ -14,14 +14,10 @@ export function registerListenGuessMessages(socketPkg: SocketPackage) {
             // end state if all player guess rights
             var _id: Filter<ServerRoom> = { _id: new ObjectId(socketPkg.roomId) }
             var room = await socketPkg.room.findOne(_id)
-
             if (room == null) throw Error('room not found')
 
             var state = getRunningState(room) as DrawState
-
-            if (state.type != DrawState.TYPE) throw Error('wrong DRAW state')
-
-            if (state.points[socketPkg.playerId as string] != null) return
+            if (state.type != DrawState.TYPE || state.points[socketPkg.playerId as string] != null) throw Error('wrong DRAW state')
 
             var guessResult = checkGuessing(state.word as string, guess)
 
@@ -71,11 +67,13 @@ export function registerListenGuessMessages(socketPkg: SocketPackage) {
                 return
             }
 
+            //#region Guess wrong, just send the message
             msg = new PlayerChatMessage(socketPkg.playerId as string, socketPkg.name, guess)
 
             await socketPkg.room.updateOne(_id, { $push: { messages: msg } })
             callback(guessResult)
             socketPkg.socket.to(socketPkg.roomId).emit('player_chat', msg)
+            //#endregion
         } catch (e) {
             console.log(`[PLAYER_GUESS]: ${e}`);
         }

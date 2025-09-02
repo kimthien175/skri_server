@@ -6,9 +6,8 @@ import { getRunningState, ServerRoom } from "../types/room.js";
 
 export function registerHint(socketPkg: SocketPackage) {
     socketPkg.socket.on("hint", async function (charIndex: number) {
-        // save to db
         try {
-            var _id:Filter<ServerRoom> = { _id: new ObjectId(socketPkg.roomId) };
+            var _id: Filter<ServerRoom> = { _id: new ObjectId(socketPkg.roomId) };
             var room = await socketPkg.room.findOne(_id);
 
             if (room == null) throw Error("room not found");
@@ -24,15 +23,12 @@ export function registerHint(socketPkg: SocketPackage) {
             }
 
             //save to db
-            await socketPkg.room.updateOne(
-                _id,
-                {
-                    $set: {
-                        [`henceforth_states.${state.id}.hint`]:
-                            state.hint.substring(0, charIndex) + state.word[charIndex] + state.hint.substring(charIndex + 1),
-                    },
+            await socketPkg.room.updateOne(_id, {
+                $set: {
+                    [`henceforth_states.${state.id}.hint`]:
+                        state.hint.substring(0, charIndex) + state.word[charIndex] + state.hint.substring(charIndex + 1)
                 }
-            );
+            })
 
             socketPkg.socket.to(socketPkg.roomId).emit("hint", charIndex, state.word[charIndex]);
         } catch (e: any) {

@@ -68,14 +68,12 @@ export async function endDrawState(socketPkg: SocketPackage, room: WithId<Server
                 bestPlayerIds.push(IDs[index])
             }
         }
-        for (var id in bestPlayerIds) {
-            $set[`players.${id}.winner`] = true
-        }
         bonus.end_game = room.players
 
-        // reset all player score to 0
+        // reset all player score to 0, reset crown
         for (var id in room.players) {
             $set[`players.${id}.score`] = 0
+            $set[`players.${id}.winner`] = bestPlayerIds.includes(id)
         }
     } else if (drawState.end_state == 'end_round') {
         // PICK WORD STATE WITH ROUND NOTIFY
