@@ -1,20 +1,24 @@
+import { ObjectId } from "mongodb"
 import { RoomSettings } from "./type"
 
 export class Message {
     constructor(type: string) { this.type = type }
     type: string
     timestamp = new Date()
+    id = new ObjectId()
 }
 
 export class NewHostMessage extends Message {
-    constructor(player_id: String, player_name: string) {
+    constructor(player_id: String, player_name: string, first?: boolean) {
         super('new_host')
         this.player_id = player_id
         this.player_name = player_name
+        this.first = first
     }
     player_id: String
     player_name: string
     settings?:RoomSettings
+    first?: boolean
 }
 
 export class PlayerJoinMessage extends Message {

@@ -1,12 +1,12 @@
-import { getLastestSpecs, Mongo } from "../../utils/db/mongo.js";
+import { Mongo } from "../../utils/db/mongo.js";
 import { SocketPackage } from "../../types/socket_package.js";
 import { PrivateRoomJoinRequest, PrivateRoomRejoinRequest, RoomResponse } from "../../types/type.js";
-import { PrivateRoom, PublicRoom, ServerRoom } from "../../types/room.js";
+import { PrivateRoom } from "../../types/room.js";
 import { Random } from "../../utils/random/random.js";
 import { Collection, Filter, FindOneAndUpdateOptions, ModifyResult, ObjectId, PushOperator, ReturnDocument, UpdateFilter, WithId } from "mongodb";
 import { PlayerJoinMessage } from "../../types/message.js";
-import { BlackItem } from "../../types/black_list.js";
 import { GameState } from "../state/state.js";
+import { messagesPageQuantity } from "../../events/load_messages.js";
 
 /**
  * 
@@ -55,7 +55,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
                 player.id = new ObjectId().toString()
                 player.socket_id = socketPkg.socket.id
                 player.score = 0
-                
+
                 //player.ip = socket.handshake.address
                 if (player.name === '') {
                     player.name = (await Random.getWords({ word_count: 1, language: requestPkg.lang }))[0];
@@ -113,7 +113,6 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
 
                 console.log(room);
 
-                // TODO: SEND settings.custom_words to new room host 
                 delete room.settings.custom_words
 
                 GameState.removeSensitiveProperties(room.henceforth_states[room.status.current_state_id])
@@ -138,20 +137,18 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
     )
 }
 
-// TODO: MESSAGES LAZY LOADING
-export const PrivateRoomProjection//: Record<keyof PrivateRoom, any> & { _id: number } 
+export const PrivateRoomProjection
     = {
     _id: 1,
     host_player_id: 1,
     options: 1,
     players: 1,
     settings: 1,
-    messages: { $slice: ["$messages", -20] },
+    messages: { $slice: ["$messages", -messagesPageQuantity] },
     henceforth_states: 1,
     status: 1,
     code: 1,
     system: 1,
     current_round: 1,
     latest_draw_data: 1
-    // black_list: 0,
 }

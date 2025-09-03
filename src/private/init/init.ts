@@ -4,7 +4,7 @@ import { Mongo, getLastestSpecs } from "../../utils/db/mongo.js";
 import { Random } from "../../utils/random/random.js";
 import { RoomRequestPackage, RoomResponse } from "../../types/type.js";
 import { PrivateRoom } from "../../types/room.js";
-import { NewHostMessage } from "../../types/message.js";
+import { Message, NewHostMessage, PlayerChatMessage } from "../../types/message.js";
 import { PrivatePreGameState } from "../state/state.js";
 import { getNewRoomCode } from "../../utils/get_room_code.js";
 import { ObjectId } from "mongodb";
@@ -32,11 +32,16 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
             var pregame_state = new PrivatePreGameState();
             pregame_state.start_date = new Date()
 
+            var _100DummyMsgs: Message[] = []
+            for (var i=1; i<101; i++){
+              _100DummyMsgs.push(new PlayerChatMessage(player.id, player.name, i.toString()))
+            }
+
             const room: PrivateRoom = {
               code: await getNewRoomCode(Mongo.privateRooms),
               host_player_id: player.id,
               players: { [`${player.id}`]: player },
-              messages: [new NewHostMessage(player.id, player.name)],
+              messages: [new NewHostMessage(player.id, player.name, true), ..._100DummyMsgs],
               ...(await getLastestSpecs()),
               current_round_done_players: {},
               current_round: 1,
