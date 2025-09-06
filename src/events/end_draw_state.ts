@@ -1,5 +1,5 @@
-import { Filter, ObjectId, UpdateFilter, WithId } from "mongodb";
-import { doCurrentRoundHaveAllPlayersDrawed, getRunningState, ServerRoom, StateStatus } from "../types/room.js";
+import { ObjectId, UpdateFilter, WithId } from "mongodb";
+import { doCurrentRoundHaveAllPlayersDrawed, getRunningState, PrivateRoom, ServerRoom, StateStatus } from "../types/room.js";
 import { SocketPackage } from "../types/socket_package.js";
 import { DrawState, GameState, PickWordState, PrivatePreGameState } from "../private/state/state.js";
 import { Mutable } from "../types/type.js";
@@ -7,9 +7,8 @@ import { Random } from "../utils/random/random.js";
 import { io } from "../socket_io.js";
 import { Player } from "../types/player.js";
 
-export async function endDrawState(socketPkg: SocketPackage, room: WithId<ServerRoom>, drawState: DrawState): Promise<{ state: GameState, updatePackage: UpdateFilter<ServerRoom> & { $set: NonNullable<UpdateFilter<ServerRoom>['$set']> } }> {
-    drawState.draw_data = room.latest_draw_data
-    drawState.end_date = new Date()
+export async function endDrawState<R extends ServerRoom>(socketPkg: SocketPackage, room: R, state: GameState): Promise<UpdateFilter<ServerRoom> & { $set: NonNullable<UpdateFilter<ServerRoom>['$set']> }> {
+    state.end_date = new Date()
 
     var outdatedState = room.henceforth_states[room.status.current_state_id]
 
@@ -24,15 +23,29 @@ export async function endDrawState(socketPkg: SocketPackage, room: WithId<Server
         }
         end_game?:
         { [id: string]: Player }
-    } = {
-        end_state: {
-            word: drawState.word as string,
-            points: drawState.points
+    } | {
+        end_game?:
+        { [id: string]: Player }
+    }
+
+    var endState: DrawState['end_state']
+
+    if (state.type == DrawState.TYPE) {
+        (state as DrawState).draw_data = room.latest_draw_data
+        bonus = {
+            end_state: {
+                word: (state as DrawState).word as string,
+                points: (state as DrawState).points
+            }
         }
+        endState = (state as DrawState).end_state
+    } else {
+        bonus = {}
+        endState = DrawState.getEndState(room)
     }
 
     //#region CREATE NEXT STATE AFTER DRAW STATE
-    if (drawState.end_state == 'end_game') {
+    if (endState == 'end_game') {
         // it's time to switch to new round or pre game state (if private room) or round 1(if public room)
 
         // pre game state or round 1 for public room
@@ -50,7 +63,7 @@ export async function endDrawState(socketPkg: SocketPackage, room: WithId<Server
             $set.current_round_done_players = { [nextPickerId]: true }
         } else {
             // pre game state
-            nextState = new PrivatePreGameState()
+            nextState = new PrivatePreGameState((room as unknown as PrivateRoom).host_player_id)
         }
         $set.current_round = 1
 
@@ -75,7 +88,7 @@ export async function endDrawState(socketPkg: SocketPackage, room: WithId<Server
             $set[`players.${id}.score`] = 0
             $set[`players.${id}.winner`] = bestPlayerIds.includes(id)
         }
-    } else if (drawState.end_state == 'end_round') {
+    } else if (endState == 'end_round') {
         // PICK WORD STATE WITH ROUND NOTIFY
         var nextPickerId: string
         const idList = Object.keys(room.players)
@@ -89,16 +102,14 @@ export async function endDrawState(socketPkg: SocketPackage, room: WithId<Server
         $set.current_round = room.current_round + 1
     } else {
         // next as pickword state like usual
-        var nextPickerId: string
-        const idList = Object.keys(room.players)
 
+        const idList = Object.keys(room.players)
         // delete done players in the list
         for (let key in room.current_round_done_players) {
             const index = idList.indexOf(key)
             if (index != -1) idList.splice(index, 1)
         }
-
-        nextPickerId = idList[Math.floor(Math.random() * idList.length)]
+        var nextPickerId = idList[Math.floor(Math.random() * idList.length)]
 
         nextState = new PickWordState({ player_id: nextPickerId, words: await Random.getWords(room.settings) })
 
@@ -106,24 +117,25 @@ export async function endDrawState(socketPkg: SocketPackage, room: WithId<Server
     }
     //#endregion
 
-    // change updatePkg
-    $set[`henceforth_states.${nextState.id}`] = nextState
-
-    $set.status = {
-        current_state_id: drawState.id,
+    const status: StateStatus = {
+        current_state_id: state.id,
         command: 'end',
-        date: drawState.end_date,
+        date: state.end_date,
         bonus,
         next_state_id: nextState.id
     }
+    io.to(socketPkg.roomId).emit('new_states', {
+        status,
+        henceforth_states: { [nextState.id]: nextState }
+    })
+
+    $set.status = status
+    $set[`henceforth_states.${nextState.id}`] = nextState;
 
     return {
-        state: nextState,
-        updatePackage: {
-            $set,
-            $push: { outdated_states: outdatedState },
-            $unset: { [`henceforth_states.${outdatedState.id}`]: "" }
-        }
+        $set,
+        $push: { outdated_states: outdatedState },
+        $unset: { [`henceforth_states.${outdatedState.id}`]: "" }
     }
 }
 

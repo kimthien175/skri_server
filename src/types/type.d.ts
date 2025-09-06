@@ -1,5 +1,6 @@
 import { ServerRoom } from "./room"
-import { Player} from './player'
+import { Player } from './player'
+import { ServerTicket } from "./ticket"
 
 type RoomResponse<T extends ServerRoom> =
     {
@@ -8,15 +9,15 @@ type RoomResponse<T extends ServerRoom> =
     }
     | {
         success: false
-        data: {type: 'room_not_found'}  | {type: 'room_full'}
+        data: { type: 'room_not_found' } | { type: 'room_full' }
     }
 
-interface RoomResponseData< T extends  ServerRoom> {
+interface RoomResponseData<T extends ServerRoom> {
     player: Player
     room: T
 }
 
-interface Specs{
+interface Specs {
     settings: RoomSettings
     options: RoomOptions
     system: RoomSystem
@@ -52,8 +53,8 @@ interface RoomOptions {
 
 type WordMode = 'Normal' | 'Hidden' | 'Combination'
 
-type NonEmptyArray<T> = [T,...T[]]
-type  RoomSettings ={
+type NonEmptyArray<T> = [T, ...T[]]
+type RoomSettings = {
     players: number;
     language: Language;
     rounds: number;
@@ -61,14 +62,14 @@ type  RoomSettings ={
     word_count: number;
     hints: number;
     draw_time: number;
-    
+
 } & ({
     use_custom_words_only: true
     custom_words: NonEmptyArray<string>
 } | {
-    use_custom_words_only?: false 
+    use_custom_words_only?: false
     custom_words?: NonEmptyArray<string>
-} )
+})
 
 interface RoomRequestPackage {
     player: Player
@@ -79,14 +80,7 @@ interface PrivateRoomJoinRequest extends RoomRequestPackage {
     code: string
 }
 
-interface JoinRoomRequestPackage extends RoomRequestPackage{
-    code: string
-}
-
-interface PrivateRoomRejoinRequest extends RoomRequestPackage{
-    ticket_id: string 
-    room_id: string
-}
+type PrivateRoomRejoinRequest = RoomRequestPackage & { id: string, victim_id: string }
 
 type Mutable<T> = {
     -readonly [K in keyof T]: T[K];

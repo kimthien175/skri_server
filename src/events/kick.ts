@@ -1,104 +1,106 @@
-import { Collection, FindOneAndUpdateOptions, MatchKeysAndValues, ObjectId, PushOperator, ReturnDocument, UpdateFilter, WithId } from "mongodb";
+import { ObjectId, UpdateFilter, WithId } from "mongodb";
 import { SocketPackage } from "../types/socket_package.js";
-import { PrivateRoom, ServerRoom } from "../types/room.js";
-import { PlayerGotKickedMessage } from "../types/message.js";
+import { getRunningState, ServerRoom } from "../types/room.js";
+import { Message, PlayerGotKickedMessage } from "../types/message.js";
 import { getNewRoomCode } from "../utils/get_room_code.js";
 import { io } from "../socket_io.js";
 import { ServerTicket } from "../types/ticket.js";
 import { Player } from "../types/player.js";
+import { GameState } from "../private/state/state.js";
 
 export const registerKick = async function (socketPkg: SocketPackage) {
-    socketPkg.socket.on('host_kick', async function (victimId: string, callback: (res: KickResponse) => void) {
+    socketPkg.socket.on('host_kick', async function (victimId: string, callback: (res: {
+        success: true
+    } | { success: false, reason: any }) => void) {
         // verify host 
         try {
-            var room = await (socketPkg.room as unknown as Collection<PrivateRoom>).findOne(
-                {
-                    _id: new ObjectId(socketPkg.roomId),
-                    host_player_id: socketPkg.playerId,
-                    players: { $elemMatch: { id: victimId } }
-                }
+            if (victimId == socketPkg.playerId) throw Error("host can't kick themself")
 
-            )
-            if (room == null) {
-                callback({ success: false, reason: 'room not found' })
-                return
+            const filter = {
+                _id: new ObjectId(socketPkg.roomId),
+                host_player_id: socketPkg.playerId,
+                [`players.${victimId}`]: { $exists: true }
             }
 
-            await kick(room.players[victimId], socketPkg, room)
-            callback({ success: true, data: null })
-            return
+            var room = await socketPkg.room.findOne(filter)
+            if (room == null) throw Error('room not found')
+
+            var updateResult = await socketPkg.room.updateOne(filter, await kick(room.players[victimId], socketPkg, room))
+            if (updateResult.modifiedCount != 1) throw Error('update failed')
+
+            callback({ success: true })
         } catch (e: any) {
+            console.log(`[HOST KICK] ${e}`);
             callback({ success: false, reason: e })
-            return
         }
     })
 }
 
-type KickResponse = {
-    success: true
-    data: any
-} | { success: false, reason: any }
-
-export async function kick(victim: Player, socketPkg: SocketPackage, room: WithId<ServerRoom>) {
-    var roomObjId = new ObjectId(socketPkg.roomId)
-
-    var new_code = await getNewRoomCode(socketPkg.room)
+/** emit to clients, not save to db, return update filter for other tasks
+ *  */
+export async function kick<R extends ServerRoom>(victim: Player, socketPkg: SocketPackage, room: WithId<R>, firstMessage?: Message): Promise<UpdateFilter<ServerRoom>> {
     var message = new PlayerGotKickedMessage(victim.name)
+    var newCode = await getNewRoomCode(socketPkg.room)
 
-    var updateFilter: UpdateFilter<ServerRoom> & { $set: MatchKeysAndValues<ServerRoom> } & { $push: PushOperator<ServerRoom> } = {
-        $push: { messages: message },
-        $set: { code: new_code },
-        $unset: {
-            [`players.${victim.id}`]: "",
-            [`current_round_done_players.${victim.id}`]:""
+    // create new ticket or check for existing ticket
+    var ticketSet = await _getTicket(room.tickets, victim.id)
+
+    // check if victim are important in some state
+    var state = getRunningState(room)
+
+    var updateFilter: UpdateFilter<ServerRoom>
+    if (state.player_id == victim.id) {
+        updateFilter = GameState.onMainPlayerLeave(room, state, socketPkg, firstMessage)
+
+        updateFilter.$set = {
+            ...updateFilter.$set,
+            code: newCode,
+            [`tickets.${ticketSet.id}`]: ticketSet.ticket
         }
-    }
-    var options: FindOneAndUpdateOptions & {
-        includeResultMetadata: false;
-    } = {
-        returnDocument: ReturnDocument.AFTER,
-        projection: { _id: 1 },
-        includeResultMetadata: false
-    }
-
-    var ticket = await ServerTicket.init(victim.id)
-
-    // check existing ticket
-    if (room.tickets != undefined) {
-        for (var serverTicket of room.tickets) {
-            if (serverTicket.victim_id == victim.id) {
-                console.log(`found exist ticket ${serverTicket}`);
-                // replace ticket
-                updateFilter.$set['tickets.$[b]'] = ticket
-                options.arrayFilters = [{ "b.victim_id": victim.id }]
-
-                break
+    } else {
+        updateFilter = {
+            $push: { messages: { $each: firstMessage != undefined ? [firstMessage, message] : [message] } },
+            $set: {
+                code: newCode,
+                [`tickets.${ticketSet.id}`]: ticketSet.ticket
+            },
+            $unset: {
+                [`players.${victim.id}`]: "",
+                [`current_round_done_players.${victim.id}`]: ""
             }
         }
     }
 
-    if (options.arrayFilters == undefined) {
-        (updateFilter.$push as any).tickets = ticket
+    // delete valid_date
+    var clientTicket = { id: ticketSet.id, victim_id: ticketSet.ticket.victim_id }
+
+    io.to(victim.socket_id).emit('player_got_kicked', { ticket: clientTicket });
+
+    io.to(socketPkg.roomId).except(victim.socket_id).emit('player_got_kicked', {
+        new_code: newCode,
+        message,
+        ticket: clientTicket
+    })
+
+    return updateFilter
+}
+
+async function _getTicket(tickets: ServerRoom['tickets'], victimId: string): Promise<{ id: string, ticket: ServerTicket }> {
+    var newValidDate = await ServerTicket.getValidDate()
+
+    for (var ticketId in tickets) {
+        var ticket = tickets[ticketId]
+        if (ticket.victim_id == victimId) {
+            ticket.valid_date = newValidDate
+            return {
+                id: ticketId,
+                ticket: ticket
+            }
+        }
     }
 
-    //save to db
-    var updateResult = await socketPkg.room.findOneAndUpdate(
-        { _id: roomObjId },
-        updateFilter,
-        options)
-
-    if (updateResult != null) {
-        console.log(updateResult._id);
-        // emit to victim
-        console.log(`server ticket ${ticket}`);
-        console.log(`client ticket ${ticket.toClientTicket(roomObjId.toString())}`);
-        io.to(victim.socket_id).emit('player_got_kicked', ticket.toClientTicket(roomObjId.toString()))
-
-        // emit to everyone else
-        io.to(socketPkg.roomId).except(victim.socket_id).emit('player_got_kicked', {
-            message, new_code, victim_id: victim.id
-        })
-    } else {
-        throw new Error('updating is not right')
+    return {
+        id: new ObjectId().toString(),
+        ticket: new ServerTicket(newValidDate, victimId)
     }
 }

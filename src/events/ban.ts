@@ -2,71 +2,48 @@ import { ObjectId, UpdateFilter, WithId } from "mongodb"
 import { SocketPackage } from "../types/socket_package.js"
 import { getNewRoomCode } from "../utils/get_room_code.js"
 import { PlayerGotBannedMessage } from "../types/message.js"
-import { ServerRoom } from "../types/room.js"
+import { PrivateRoom, ServerRoom } from "../types/room.js"
 import { io } from "../socket_io.js"
 
 export const registerBan = async function (socketPkg: SocketPackage) {
-    socketPkg.socket.on('host_ban', async function (victimId: string, callback: (res: BanResponse) => void) {
+    socketPkg.socket.on('host_ban', async function (victimId: string, callback: (res: { success: true } | { success: false, reason: any }) => void) {
         // verify host
         try {
-            var room = await socketPkg.room.findOne({
+            const filter: UpdateFilter<PrivateRoom> = {
                 _id: new ObjectId(socketPkg.roomId),
                 host_player_id: socketPkg.playerId,
-                players: { $elemMatch: { id: victimId } }
-            })
-            if (room == null) {
-                callback({ success: false, reason: 'room not found' })
-                return
+                [`players.${victimId}`]: { $exists: true }
             }
-            await ban(victimId, socketPkg, room)
-            callback({ success: true, data: null })
-            return
+            var room = await socketPkg.room.findOne(filter)
+            if (room == null) throw Error('room not found')
+
+            var victim = room.players[victimId]
+
+            var new_code = await getNewRoomCode(socketPkg.room)
+            var message = new PlayerGotBannedMessage(room.players[victimId].name)
+
+            var updateFilter: UpdateFilter<ServerRoom> = {
+                $push: { messages: message },
+                $set: { code: new_code },
+                $unset: {
+                    [`players.${victimId}`]: "",
+                    [`current_round_done_players.${victimId}`]: ""
+                }
+            }
+
+            var updateResult = await socketPkg.room.updateOne(filter, updateFilter)
+            if (updateResult.modifiedCount != 1) throw Error('update failed')
+
+
+            socketPkg.socket.to(victim.socket_id).emit('player_got_banned', { victim_id: victimId })
+            io.to(socketPkg.roomId).except(victim.socket_id).emit('player_got_banned', {
+                message, new_code, victim_id: victimId
+            })
+
+            callback({ success: true })
         } catch (e: any) {
+            console.log(`[BAN] ${e}`);
             callback({ success: false, reason: e })
-            return
         }
     })
-}
-
-type BanResponse = {
-    success: true
-    data: any
-} | {
-    success: false
-    reason: any
-}
-
-async function ban(victimId: string, socketPkg: SocketPackage, room: WithId<ServerRoom>) {
-    var new_code = await getNewRoomCode(socketPkg.room)
-    var message = new PlayerGotBannedMessage(room.players[victimId].name)
-
-    var updateFilter: UpdateFilter<ServerRoom> = {
-        $push: { messages: message },
-        //$pull: { round_white_list: victimId },
-        $set: { code: new_code },
-        $unset: {
-            [`players.${victimId}`]: "",
-            [`current_round_done_players.${victimId}`]:""
-        }
-    }
-
-    var updateResult = await socketPkg.room.findOneAndUpdate({ _id: new ObjectId(socketPkg.roomId) }, updateFilter,
-        {
-            includeResultMetadata: true,
-            returnDocument: "after"
-        })
-
-
-
-    if (updateResult.ok == 0 || updateResult.value == null) throw Error('[BAN] update failed')
-
-    var victim = updateResult.value.players[victimId]
-
-    if (victim == undefined) throw Error('[BAN]: not found player')
-
-    io.to(victim.socket_id).emit('player_got_banned', { victim_id: victimId })
-    io.to(socketPkg.roomId).except(victim.socket_id).emit('player_got_banned', {
-        message, new_code, victim_id: victimId
-    })
-
 }

@@ -29,19 +29,14 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
             }
             //#endregion
 
-            var pregame_state = new PrivatePreGameState();
+            var pregame_state = new PrivatePreGameState(player.id);
             pregame_state.start_date = new Date()
-
-            var _100DummyMsgs: Message[] = []
-            for (var i=1; i<101; i++){
-              _100DummyMsgs.push(new PlayerChatMessage(player.id, player.name, i.toString()))
-            }
 
             const room: PrivateRoom = {
               code: await getNewRoomCode(Mongo.privateRooms),
               host_player_id: player.id,
               players: { [`${player.id}`]: player },
-              messages: [new NewHostMessage(player.id, player.name, true), ..._100DummyMsgs],
+              messages: [new NewHostMessage(player.id, player.name, true)],
               ...(await getLastestSpecs()),
               current_round_done_players: {},
               current_round: 1,
@@ -55,7 +50,8 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
               latest_draw_data: {
                 past_steps: {},
                 black_list: {}
-              }
+              },
+              tickets:{}
             };
 
             // insert code to room
@@ -72,7 +68,6 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage) {
 
             // join room
             await socket.join(instertResult.insertedId.toString());
-            console.log(room);
             resolve({
               success: true,
               data: {

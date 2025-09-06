@@ -61,7 +61,7 @@ class Mongo {
         return Mongo._db.collection('privateRooms')
     }
 
-    static endedPrivateRooms() {
+    static get endedPrivateRooms() {
         return Mongo._db.collection('endedPrivateRooms')
     }
 

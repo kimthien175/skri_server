@@ -27,24 +27,12 @@ export function registerListenGuessMessages(socketPkg: SocketPackage) {
             if (guessResult == GuessResult.right) {
                 var point = grantPoint(state.points, socketPkg.playerId as string)
 
-                var updatePkg: Mutable<UpdateFilter<ServerRoom> & { $set: NonNullable<UpdateFilter<ServerRoom>['$set']> }>
-
                 state.points[socketPkg.playerId as string] = point
-                if (DrawState.isEndState(state, room.players)) {
-                    var result = await endDrawState(socketPkg, room, state)
-                    updatePkg = result.updatePackage
 
-                    console.log(updatePkg);
-
-                    io.to(socketPkg.roomId).emit('new_states', {
-                        status: result.updatePackage.$set.status,
-                        henceforth_states: {
-                            [result.state.id]: result.state
-                        }
-                    })
-                } else {
-                    updatePkg = { $set: {} }
-                }
+                var updatePkg: Mutable<UpdateFilter<ServerRoom> & { $set: NonNullable<UpdateFilter<ServerRoom>['$set']> }> =
+                    DrawState.isEndState(state, room.players) ?
+                        await endDrawState(socketPkg, room, state) :
+                        { $set: {} }
 
                 var playerScore = room.players[socketPkg.playerId as string].score
 

@@ -34,7 +34,7 @@ export interface ServerRoom {
   system: RoomSystem;
   current_round_done_players: {[id: string]: true};
   current_round: number;
-  tickets?: ServerTicket[];
+  tickets: {[id: string]: ServerTicket} ;
   used_words?: string[]
   latest_draw_data: DrawData
 }
@@ -63,6 +63,6 @@ export interface PublicRoom extends ServerRoom {}
 
 /**ful doc: including states*/
 export interface PrivateRoom extends ServerRoom {
-  host_player_id: String;
+  host_player_id: string;
   options: RoomOptions;
 }

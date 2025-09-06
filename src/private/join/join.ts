@@ -1,140 +1,94 @@
 import { Mongo } from "../../utils/db/mongo.js";
 import { SocketPackage } from "../../types/socket_package.js";
-import { PrivateRoomJoinRequest, PrivateRoomRejoinRequest, RoomResponse } from "../../types/type.js";
+import { PrivateRoomJoinRequest, PrivateRoomRejoinRequest } from "../../types/type.js";
 import { PrivateRoom } from "../../types/room.js";
 import { Random } from "../../utils/random/random.js";
-import { Collection, Filter, FindOneAndUpdateOptions, ModifyResult, ObjectId, PushOperator, ReturnDocument, UpdateFilter, WithId } from "mongodb";
+import { Filter, ObjectId, ReturnDocument, UpdateFilter } from "mongodb";
 import { PlayerJoinMessage } from "../../types/message.js";
 import { GameState } from "../state/state.js";
 import { messagesPageQuantity } from "../../events/load_messages.js";
+import { Player } from "../../types/player.js";
 
 /**
  * 
  * send full data, except `settings.custom_words` and states sensitive properties
  */
 export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
-    socketPkg.socket.on('join_private_room', async (requestPkg: PrivateRoomJoinRequest | PrivateRoomRejoinRequest, callback) =>
-        callback(await new Promise<RoomResponse<PrivateRoom>>(async function (resolve) {
+    socketPkg.socket.on('join_private_room', async function (requestPkg: PrivateRoomJoinRequest | PrivateRoomRejoinRequest, callback: (arg: { success: true, data: { player: Player, room: PrivateRoom } } | { success: false, reason: any }) => void) {
+        try {
             await Mongo.connect()
-            try {
+            //#region PLAYER
+            const player = requestPkg.player
+            player.socket_id = socketPkg.socket.id
+            player.score = 0
 
-                var filter: Filter<PrivateRoom>
-                if ((requestPkg as PrivateRoomRejoinRequest).ticket_id != null) {
-                    console.log(requestPkg);
-
-                    filter = {
-                        _id: new ObjectId((requestPkg as PrivateRoomRejoinRequest).room_id),
-                        tickets: {
-                            $elemMatch: {
-                                ticket_id: (requestPkg as PrivateRoomRejoinRequest).ticket_id,
-                                valid_date: { $lt: new Date() },
-                            }
-                        }
-                    }
-                    console.log(filter);
-                } else {
-                    filter = {
-                        code: (requestPkg as PrivateRoomJoinRequest).code,
-                    }
-                }
-
-                var foundRoom = await Mongo.privateRooms.findOne(filter, { projection: PrivateRoomProjection })
-
-                if (foundRoom == null) {
-                    resolve({ success: false, data: { type: 'room_not_found' } })
-                    return
-                }
-
-                if (Object.keys(foundRoom.players).length == foundRoom.settings.players) {
-                    resolve({ success: false, data: { type: 'room_full' } })
-                    return
-                }
-
-                //#region PLAYER
-                const player = requestPkg.player
-                player.id = new ObjectId().toString()
-                player.socket_id = socketPkg.socket.id
-                player.score = 0
-
-                //player.ip = socket.handshake.address
-                if (player.name === '') {
-                    player.name = (await Random.getWords({ word_count: 1, language: requestPkg.lang }))[0];
-                }
-                //#endregion
-
-                var updateFilter: UpdateFilter<PrivateRoom> & { $push: NonNullable<UpdateFilter<PrivateRoom>> } = {
-                    $push: {
-                        messages: new PlayerJoinMessage(player.id, player.name),
-                    },
-                    $set: {
-                        [`players.${player.id}`]: player
-                    }
-                }
-
-                var options: FindOneAndUpdateOptions & { includeResultMetadata: false } = {
-                    returnDocument: ReturnDocument.AFTER,
-                    projection: PrivateRoomProjection,
-                    includeResultMetadata: false
-                }
-
-                if ((requestPkg as PrivateRoomRejoinRequest).ticket_id != null) {
-                    // modify ticket by new victim_id
-                    updateFilter.$set = { 'tickets.$[b].victim_id': socketPkg.playerId }
-                    options.arrayFilters = [{ 'b.ticket_id': (requestPkg as PrivateRoomRejoinRequest).ticket_id }]
-                }
-
-                // modify socketPkg
-                socketPkg.roomId = foundRoom._id.toString()
-                socketPkg.isOwner = false
-                socketPkg.name = player.name
-                socketPkg.isPublicRoom = false
-                socketPkg.playerId = player.id
-
-                var room: WithId<PrivateRoom> | null = await (socketPkg.room as unknown as Collection<PrivateRoom>).findOneAndUpdate(
-                    { code: foundRoom.code as string },
-                    updateFilter,
-                    options)
-
-                if (room == null) {
-                    console.log('join private room error');
-                    console.log(room);
-                    resolve({ success: false, data: { type: 'room_not_found' } })
-                    return
-                }
-
-                await socketPkg.socket.join(socketPkg.roomId)
-
-                // notify other players
-                socketPkg.socket.to(socketPkg.roomId).emit('player_join',
-                    {
-                        message: updateFilter.$push.messages,
-                        player
-                    })
-
-                console.log(room);
-
-                delete room.settings.custom_words
-
-                GameState.removeSensitiveProperties(room.henceforth_states[room.status.current_state_id])
-
-                if (room.status.command == 'end') {
-                    GameState.removeSensitiveProperties(room.henceforth_states[room.status.next_state_id])
-                }
-
-                resolve({ success: true, data: { player, room } })
-
-            } catch (e: any) {
-                console.log(`join_private_room: ${socketPkg.playerId} ${requestPkg}`)
-                console.log(e);
-                resolve({
-                    success: false, data: {
-                        type: 'unhandled_error',
-                        ...e
-                    }
-                })
+            //player.ip = socket.handshake.address
+            if (player.name === '') {
+                player.name = (await Random.getWords({ word_count: 1, language: requestPkg.lang }))[0];
             }
-        }))
-    )
+            //#endregion
+
+            var ticketId = (requestPkg as PrivateRoomRejoinRequest).id
+            var roomFilter
+            if (ticketId != null) {
+                roomFilter = {
+                    [`tickets.${ticketId}.valid_date`]: { $lt: new Date() },  // as kicked player rejoining          
+                    [`tickets.${ticketId}.victim_id`]: (requestPkg as PrivateRoomRejoinRequest).victim_id
+                }
+                player.id = (requestPkg as PrivateRoomRejoinRequest).victim_id
+            } else {
+                roomFilter = {
+                    code: (requestPkg as PrivateRoomJoinRequest).code, // as fresh new player joining
+                }
+                player.id = new ObjectId().toString()
+            }
+
+            const filter: Filter<PrivateRoom> = {
+                $and: [
+                    roomFilter,
+                    { [`players.${player.id}`]: { $exists: false } }, // prevent player id collision error
+                    { $expr: { $lt: [{ $size: { $objectToArray: "$players" } }, "$settings.players"] } } // number of existing players must be lower than allowed max players
+                ]
+            }
+
+            const updateFilter: UpdateFilter<PrivateRoom> & { $push: NonNullable<UpdateFilter<PrivateRoom>> } = {
+                $push: { messages: new PlayerJoinMessage(player.id, player.name) },
+                $set: { [`players.${player.id}`]: player }
+            }
+
+            var room = await Mongo.privateRooms.findOneAndUpdate(filter, updateFilter, {
+                projection: PrivateRoomProjection,
+                returnDocument: ReturnDocument.AFTER
+            })
+            if (room == null) throw Error('room_not_found')
+
+            // modify socketPkg
+            socketPkg.roomId = room._id.toString()
+            socketPkg.isOwner = false
+            socketPkg.name = player.name
+            socketPkg.isPublicRoom = false
+            socketPkg.playerId = player.id
+
+            await socketPkg.socket.join(socketPkg.roomId)
+
+            // notify other players
+            socketPkg.socket.to(socketPkg.roomId).emit('player_join', { message: updateFilter.$push.messages, player })
+
+            //#region REMOVE SENSITIVE INFORMATION BEFORE SENDING TO CLIENT
+            delete room.settings.custom_words
+            GameState.removeSensitiveProperties(room.henceforth_states[room.status.current_state_id])
+            if (room.status.command == 'end')
+                GameState.removeSensitiveProperties(room.henceforth_states[room.status.next_state_id])
+            delete (room as any)._id
+            //#endregion
+
+            callback({ success: true, data: { player, room } })
+        } catch (e: any) {
+            console.log(`[JOIN PRIVATE ROOM]: ${socketPkg.playerId} ${requestPkg}`)
+            console.log(e);
+            callback({ success: false, reason: e })
+        }
+    })
 }
 
 export const PrivateRoomProjection

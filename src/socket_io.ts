@@ -5,7 +5,7 @@ import { app } from "./utils/api.js";
 import { SocketPackage } from "./types/socket_package.js";
 
 import { registerInitPrivateRoom } from "./private/init/init.js";
-import { onLeavingPrivateRoom } from "./private/disconnect.js";
+import { onLeavingRoom } from "./private/disconnect.js";
 import { registerJoinPrivateRoom } from "./private/join/join.js";
 import { registerListenChatMessages } from "./events/player_chat.js";
 import { registerChangeSettings } from "./events/host_change_settings.js";
@@ -40,15 +40,9 @@ io.on("connection", (socket) => {
   console.log("SOCKET.IO: CONNECTED");
   socket.on("disconnect", () => {
     console.log(`player with socket ID ${socket.id} disconnected`);
-
-    // TODO: remove this 'if' on production
-    if (socketPackage.roomId == null) return;
     console.log(`SocketIO.disconnect: roomId: ${socketPackage.roomId}`);
 
-    if (socketPackage.isPublicRoom) {
-    }
-    // onLeavingPublicRoom(socketPackage)
-    else onLeavingPrivateRoom(socketPackage);
+    onLeavingRoom(socketPackage);
   });
   registerInitPrivateRoom(socketPackage);
   registerJoinPrivateRoom(socketPackage);

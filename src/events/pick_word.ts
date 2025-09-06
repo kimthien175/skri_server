@@ -3,7 +3,7 @@
 import { Filter, ObjectId, UpdateFilter } from "mongodb";
 import { SocketPackage } from "../types/socket_package";
 import { DrawState, PickWordState } from "../private/state/state.js";
-import { doCurrentRoundHaveAllPlayersDrawed, getRunningState, ServerRoom, StateStatus } from "../types/room.js";
+import { ServerRoom, StateStatus } from "../types/room.js";
 import { io } from "../socket_io.js";
 import { Mutable } from "../types/type";
 
@@ -13,14 +13,14 @@ export function registerPickWord(socketPkg: SocketPackage) {
         // set state
         // emit to players
         try {
-            var _id:Filter<ServerRoom> = { _id: new ObjectId(socketPkg.roomId) }
+            var _id: Filter<ServerRoom> = { _id: new ObjectId(socketPkg.roomId) }
             var room = await socketPkg.room.findOne(_id)
 
             if (room == null)
                 throw Error('room not found')
 
             // check state, current state is pick word, which mean room.status.next_state_id is pickword
-            var pickWordState: PickWordState = room.henceforth_states[(room.status as StateStatus & {command: 'end'}).next_state_id] as PickWordState
+            var pickWordState: PickWordState = room.henceforth_states[(room.status as StateStatus & { command: 'end' }).next_state_id] as PickWordState
             if (pickWordState.type != PickWordState.TYPE || pickWordState.player_id != socketPkg.playerId || !pickWordState.words?.includes(word))
                 throw Error('room not found')
             pickWordState.end_date = new Date()
@@ -28,8 +28,7 @@ export function registerPickWord(socketPkg: SocketPackage) {
             var drawState = new DrawState({
                 player_id: pickWordState.player_id,
                 word,
-                word_mode: room.settings.word_mode,
-                end_state: doCurrentRoundHaveAllPlayersDrawed(room) ? ( room.current_round == room.settings.rounds ? 'end_game': 'end_round'): null
+                room
             })
 
             var status: StateStatus = {
