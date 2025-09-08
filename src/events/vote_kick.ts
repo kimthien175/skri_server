@@ -32,6 +32,7 @@ export const registerVoteKick = (socketPkg: SocketPackage) =>
             victim.votekick.voter_id_list.push(socketPkg.playerId as string)
 
             var message = new PlayerVotekickMessage(socketPkg.name, victim.name, victim.votekick.voter_id_list.length, victim.votekick.min_vote)
+            io.to(socketPkg.roomId).except(victim.socket_id).emit('system_message', message)
 
             var updateFilter = (victim.votekick.voter_id_list.length >= victim.votekick.min_vote) ?// its time to kick
                 await kick(victim, socketPkg, room, message) :
@@ -43,9 +44,6 @@ export const registerVoteKick = (socketPkg: SocketPackage) =>
             // save to db
             var updateResult = await socketPkg.room.updateOne(filter, updateFilter)
             if (updateResult.modifiedCount != 1) throw Error('update failed')
-
-            // notify to everyone else except victim
-            io.to(socketPkg.roomId).except(victim.socket_id).emit('system_message', message)
 
             callback({ success: true })
         } catch (e) {

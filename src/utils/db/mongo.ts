@@ -1,7 +1,7 @@
 import { Collection, Db, MongoClient, OptionalId, ServerApiVersion, WithId } from "mongodb"
 import { Specs } from "../../types/type";
 import { PrivateRoom, PublicRoom } from "../../types/room";
-import { NormalEnglishWordDoc,  NormalVietWordDoc,  WordDoc, } from "../random/type";
+import { NormalEnglishWordDoc, NormalVietWordDoc, WordDoc, } from "../random/type";
 import { ReportItem } from "../../types/report_item";
 const uri = process.env.MONGO_URI as string
 const mongoClient = new MongoClient(uri, {
@@ -13,18 +13,13 @@ const mongoClient = new MongoClient(uri, {
 })
 
 async function getLastestNews() {
-    try {
-        await Mongo.connect();
-        var cursor = Mongo.news().find({}).sort({ _id: -1 }).limit(1)
-        var doc = await cursor.next()
-        if (doc) {
-            return doc
-        } else {
-            throw new Error('Can not find any news')
-        }
-    } catch (e) {
-        console.log(`getLastestNews: ${e}`);
-    }
+    await Mongo.connect();
+    var cursor = Mongo.news().find({}).sort({ _id: -1 }).limit(1)
+
+    var doc = await cursor.next()
+    if (doc == null) throw Error('Can not find any news')
+
+    return doc
 }
 
 async function getLastestSpecs(): Promise<Specs> {

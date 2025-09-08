@@ -46,8 +46,6 @@ export class Random {
             }
         }
 
-        console.log(`popular: ${popularWordCount}`);
-
         if (popularWordCount > 0) {
             result = result.concat(await wordGetter.popular(popularWordCount))
         }

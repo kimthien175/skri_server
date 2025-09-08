@@ -9,12 +9,24 @@ app.use(express.json())
 app.get('/', (req, res) => {
     res.send('Hello world')
 })
-app.get('/news', async (req, res) =>
-    res.send(await getLastestNews())
-)
 
-app.post('/report_player', (req, res) =>
-    Mongo.reportedPlayers.insertOne(req.body).then((_) => res.send()).catch((e) => res.status(500).send(e))
-)
+app.get('/news', async (req, res) => {
+    try {
+        res.send(await getLastestNews())
+    } catch (e) {
+        console.log(`[getLastestNews]: ${e}`);
+        res.status(500).send(e)
+    }
+})
+
+app.post('/report_player', async (req, res) => {
+    try {
+        await Mongo.reportedPlayers.insertOne(req.body)
+        res.send()
+    } catch (e) {
+        console.log(`[REPORT PLAYER] ${e}`);
+        res.status(500).send(e)
+    }
+})
 
 export { app }
