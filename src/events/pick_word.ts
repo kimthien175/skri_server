@@ -1,9 +1,7 @@
-// import { Collection } from "mongodb";
-
 import { Filter, ObjectId, UpdateFilter } from "mongodb";
 import { SocketPackage } from "../types/socket_package";
 import { DrawState, PickWordState } from "../private/state/state.js";
-import { ServerRoom, StateStatus } from "../types/room.js";
+import { getRunningState, ServerRoom, StateStatus } from "../types/room.js";
 import { io } from "../socket_io.js";
 import { Mutable } from "../types/type";
 
@@ -12,15 +10,15 @@ export function registerPickWord(socketPkg: SocketPackage) {
         // reset draw data
         // set state
         // emit to players
+        console.log(`[PICK WORD] received word: ${word}`);
         try {
-            var _id: Filter<ServerRoom> = { _id: new ObjectId(socketPkg.roomId) }
-            var room = await socketPkg.room.findOne(_id)
+            const filter: Filter<ServerRoom> = { _id: new ObjectId(socketPkg.roomId) }
 
-            if (room == null)
-                throw Error('room not found')
+            var room = await socketPkg.room.findOne(filter)
+            if (room == null) throw Error('room not found')
 
             // check state, current state is pick word, which mean room.status.next_state_id is pickword
-            var pickWordState: PickWordState = room.henceforth_states[(room.status as StateStatus & { command: 'end' }).next_state_id] as PickWordState
+            var pickWordState = getRunningState(room) as PickWordState
             if (pickWordState.type != PickWordState.TYPE || pickWordState.player_id != socketPkg.playerId || !pickWordState.words?.includes(word))
                 throw Error('room not found')
             pickWordState.end_date = new Date()
@@ -51,21 +49,14 @@ export function registerPickWord(socketPkg: SocketPackage) {
                 }
             }
 
-            var result = await socketPkg.room.updateOne(_id, updatePkg)
-
-            if (result.modifiedCount != 1)
-                throw Error('update failed')
+            var result = await socketPkg.room.updateOne(filter, updatePkg)
+            if (result.modifiedCount != 1) throw Error('update failed')
 
             callback({ success: true })
 
-            console.log(`[PICK_WORD]: send to chosen player ${drawState}`);
-
-
-            io.to(room.players[pickWordState.player_id].socket_id).emit('new_states', { status, henceforth_states: { [drawState.id]: drawState } })
+            io.to(socketPkg.socket.id).emit('new_states', { status, henceforth_states: { [drawState.id]: drawState } })
 
             drawState.removeSensitiveProperties()
-
-            console.log(`[PICK_WORD]: send to other players ${drawState}`);
 
             socketPkg.socket.to(socketPkg.roomId)
                 .emit('new_states', { status, henceforth_states: { [drawState.id]: drawState } })

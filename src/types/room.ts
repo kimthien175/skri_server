@@ -39,13 +39,6 @@ export interface ServerRoom {
   latest_draw_data: DrawData
 }
 
-export function doCurrentRoundHaveAllPlayersDrawed(room: ServerRoom): boolean{
-  for (let playerId in room.players){
-    if (!room.current_round_done_players[playerId]) return false
-  }
-  return true
-}
-
 export function getRunningState(room: ServerRoom): GameState {
   if (room.status.command == "end")
     return room.henceforth_states[room.status.next_state_id];

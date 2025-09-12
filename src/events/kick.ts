@@ -45,30 +45,12 @@ export async function kick<R extends ServerRoom>(victim: Player, socketPkg: Sock
     // create new ticket or check for existing ticket
     var ticketSet = await _getTicket(room.tickets, victim.id)
 
-    // check if victim are important in some state
-    var state = getRunningState(room)
+    var updateFilter: UpdateFilter<ServerRoom> = await GameState.onPlayerLeave(room, socketPkg, firstMessage)
 
-    var updateFilter: UpdateFilter<ServerRoom>
-    if (state.player_id == victim.id) {
-        updateFilter = GameState.onMainPlayerLeave(room, state, socketPkg, firstMessage)
-
-        updateFilter.$set = {
-            ...updateFilter.$set,
-            code: newCode,
-            [`tickets.${ticketSet.id}`]: ticketSet.ticket
-        }
-    } else {
-        updateFilter = {
-            $push: { messages: { $each: firstMessage != undefined ? [firstMessage, message] : [message] } },
-            $set: {
-                code: newCode,
-                [`tickets.${ticketSet.id}`]: ticketSet.ticket
-            },
-            $unset: {
-                [`players.${victim.id}`]: "",
-                [`current_round_done_players.${victim.id}`]: ""
-            }
-        }
+    updateFilter.$set = {
+        ...updateFilter.$set,
+        code: newCode,
+        [`tickets.${ticketSet.id}`]: ticketSet.ticket
     }
 
     // delete valid_date

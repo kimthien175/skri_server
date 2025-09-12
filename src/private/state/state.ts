@@ -1,24 +1,13 @@
-//START GAME
-
 import { ObjectId, UpdateFilter } from "mongodb"
-import { doCurrentRoundHaveAllPlayersDrawed,  ServerRoom } from "../../types/room.js"
+import { getRunningState, PrivateRoom, ServerRoom } from "../../types/room.js"
 import { Player } from "../../types/player"
 import { Message, NewHostMessage } from "../../types/message.js"
 import { SocketPackage } from "../../types/socket_package.js"
 import { io } from "../../socket_io.js"
 import { endDrawState } from "../../events/end_draw_state.js"
 
-//START ROUND
-
-//CHOOSE WORD
-//DRAW
-//DRAW RESULT
-
-//GAME RESULT
-
-
-export abstract class GameState{
-    constructor(public type: string, player_id?:Player['id']) {
+export abstract class GameState {
+    constructor(public type: string, player_id?: Player['id']) {
         this.id = (new ObjectId()).toString()
         this.player_id = player_id
     }
@@ -39,7 +28,7 @@ export abstract class GameState{
         }
     }
 
-    player_id?:Player['id']
+    player_id?: Player['id']
 
     /**
      * unset players and current_round_done_players, 
@@ -51,41 +40,44 @@ export abstract class GameState{
      * @param firstMessage 
      * @returns 
      */
-    static async onMainPlayerLeave(room: ServerRoom, state: GameState, socketPkg: SocketPackage, firstMessage?: Message): Promise<UpdateFilter<ServerRoom>> {
-        var updateFilter: UpdateFilter<ServerRoom>
-        switch (state.type) {
-            case PrivatePreGameState.TYPE:
-                //#region find player to be new owner
-                var newOwnerIndex: number
-                var players = room.players
-                const idList = Object.keys(players)
-                do {
-                    newOwnerIndex = Math.floor(Math.random() * idList.length)
-                } while (players[idList[newOwnerIndex]].id == socketPkg.playerId)
-                //#endregion
+    static async onPlayerLeave(room: ServerRoom, socketPkg: SocketPackage, firstMessage?: Message): Promise<UpdateFilter<ServerRoom>> {
+        var state = getRunningState(room)
 
-                var newOwnerId = players[idList[newOwnerIndex]].id
+        var updateFilter: UpdateFilter<ServerRoom> =
+            (state.type == DrawState.TYPE || state.type == PickWordState.TYPE) ?
+                await endDrawState(socketPkg, room, state, socketPkg.playerId) : {}
 
-                const newHostMsg = new NewHostMessage(newOwnerId, players[newOwnerId].name)
-                io.to(socketPkg.roomId).emit('new_host', newHostMsg)
+        var messages: Message[] = firstMessage != undefined ? [firstMessage] : []
 
-                updateFilter = {
-                    $set: { host_player_id: newOwnerId },
-                    $push: {
-                        messages: { $each: firstMessage != undefined ? [firstMessage, newHostMsg] : [newHostMsg] }
-                    }
-                }
-                break
+        //#region CHANGE ROOM OWNER IF CURRENT PLAYER IS OWNER
+        if (!socketPkg.isPublicRoom && socketPkg.playerId == (room as PrivateRoom).host_player_id) {
+            //#region find player to be new owner
+            var players = room.players
+            const idList = Object.keys(players)
 
-            default:
-                updateFilter = await endDrawState(socketPkg, room, state)
-                if (firstMessage != undefined) {
-                    updateFilter.$push = {
-                        ...updateFilter.$push,
-                        messages: firstMessage
-                    }
-                }
-                break
+            var newOwnerId: string
+            do {
+                newOwnerId = players[idList[Math.floor(Math.random() * idList.length)]].id
+            } while (newOwnerId == socketPkg.playerId)
+            //#endregion
+
+            const newHostMsg = new NewHostMessage(newOwnerId, players[newOwnerId].name)
+            io.to(socketPkg.roomId).emit('new_host', newHostMsg)
+
+            messages.push(newHostMsg)
+
+            updateFilter.$set = {
+                ...updateFilter.$set,
+                host_player_id: newOwnerId
+            }
+        }
+        //#endregion
+
+        if (messages.length != 0) {
+            updateFilter.$push = {
+                ...updateFilter.$push,
+                messages: { $each: messages }
+            }
         }
 
         updateFilter.$unset = {
@@ -100,15 +92,15 @@ export abstract class GameState{
 
 type PrivatePreGameStateType = 'pre_game'
 export class PrivatePreGameState extends GameState {
-    constructor(player_id: string) { 
-        super(PrivatePreGameState.TYPE, player_id) 
+    constructor(player_id: string) {
+        super(PrivatePreGameState.TYPE, player_id)
     }
 
     static TYPE: PrivatePreGameStateType = 'pre_game'
     //declare type: PrivatePreGameStateType
 }
 
-type PickWordStateType ='pick_word'
+type PickWordStateType = 'pick_word'
 export class PickWordState extends GameState {
     constructor(arg: { player_id: string, words: string[], round_notify?: number }) {
         super(PickWordState.TYPE, arg.player_id)
@@ -124,8 +116,8 @@ export class PickWordState extends GameState {
     declare player_id: Player['id']
 }
 
-type DrawStateType='draw'
-export class DrawState extends GameState{
+type DrawStateType = 'draw'
+export class DrawState extends GameState {
     constructor(arg: { player_id: string, word: string, room: ServerRoom }) {
         super(DrawState.TYPE, arg.player_id)
         this.word = arg.word
@@ -133,19 +125,26 @@ export class DrawState extends GameState{
             this.hint = arg.word.replaceAll(/\S/g, '_')
 
         this.points = {}
-        this.end_state = DrawState.getEndState(arg.room)
+        //this.end_state = DrawState.getEndState(arg.room)
         this.liked_by = []
     }
     word?: string
     hint?: string
 
     liked_by: string[]
-    static TYPE:DrawStateType = "draw"
+    static TYPE: DrawStateType = "draw"
     declare player_id: Player['id']
     //declare type: DrawStateType
 
     static getEndState(room: ServerRoom): DrawStateEnd {
-        return doCurrentRoundHaveAllPlayersDrawed(room) ? (room.current_round == room.settings.rounds ? 'end_game' : 'end_round') : null
+        return DrawState.isEndRound(room) ? (room.current_round == room.settings.rounds ? 'end_game' : 'end_round') : null
+    }
+
+    static isEndRound(room: ServerRoom): boolean {
+        for (let playerId in room.players) {
+            if (!room.current_round_done_players[playerId]) return false
+        }
+        return true
     }
 
     removeSensitiveProperties() {
@@ -159,7 +158,7 @@ export class DrawState extends GameState{
     }
 
     points: PlayersPointData
-    end_state: DrawStateEnd
+    //end_state: DrawStateEnd
 
     static isEndState(state: DrawState, players: { [id: string]: Player }): boolean {
         for (var id in players) {
@@ -170,6 +169,6 @@ export class DrawState extends GameState{
     }
 }
 
-type DrawStateEnd = 'end_round' | 'end_game' | null
+export type DrawStateEnd = 'end_round' | 'end_game' | null
 
 export type PlayersPointData = { [key: string]: number }

@@ -33,22 +33,13 @@ export async function onLeavingRoom(socketPkg: SocketPackage) {
         const playerLeaveMsg = new PlayerLeaveMessage(socketPkg.playerId as string, socketPkg.name)
         socketPkg.io.to(socketPkg.roomId).emit('player_leave', playerLeaveMsg)
 
-        var state = getRunningState(room)
         var updateFilter: UpdateFilter<PrivateRoom> =
-            (state.player_id == socketPkg.playerId) ?
-                await GameState.onMainPlayerLeave(room, state, socketPkg, playerLeaveMsg)
-                : {
-                    $push: { messages: playerLeaveMsg },
-                    $unset: {
-                        [`players.${socketPkg.playerId}`]: "",
-                        [`current_round_done_players.${socketPkg.playerId}`]: ""
-                    }
-                }
-        console.log(updateFilter);
+            await GameState.onPlayerLeave(room, socketPkg, playerLeaveMsg)
+
         var updateResult = await socketPkg.room.updateOne(filter, updateFilter);
         if (updateResult.modifiedCount != 1) throw new Error('update error');
 
-        console.log(`onLeavingPrivateRoom: Remove player ${socketPkg.playerId} out of room ${socketPkg.roomId}`);
+        console.log(`[onLeavingPrivateRoom]: Remove player ${socketPkg.playerId} out of room ${socketPkg.roomId}`);
     } catch (e) {
         console.log(`[DISCONNECT] ${e}`);
     }

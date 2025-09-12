@@ -1,13 +1,13 @@
-import { ObjectId, UpdateFilter, WithId } from "mongodb";
-import { doCurrentRoundHaveAllPlayersDrawed, getRunningState, PrivateRoom, ServerRoom, StateStatus } from "../types/room.js";
+import { ObjectId, UpdateFilter } from "mongodb";
+import { getRunningState, PrivateRoom, ServerRoom, StateStatus } from "../types/room.js";
 import { SocketPackage } from "../types/socket_package.js";
-import { DrawState, GameState, PickWordState, PrivatePreGameState } from "../private/state/state.js";
+import { DrawState, DrawStateEnd, GameState, PickWordState, PrivatePreGameState } from "../private/state/state.js";
 import { Mutable } from "../types/type.js";
 import { Random } from "../utils/random/random.js";
 import { io } from "../socket_io.js";
 import { Player } from "../types/player.js";
 
-export async function endDrawState<R extends ServerRoom>(socketPkg: SocketPackage, room: R, state: GameState): Promise<UpdateFilter<ServerRoom> & { $set: NonNullable<UpdateFilter<ServerRoom>['$set']> }> {
+export async function endDrawState(socketPkg: SocketPackage, room: ServerRoom, state: GameState, removedPlayerId?: Player['id']): Promise<UpdateFilter<ServerRoom> & { $set: NonNullable<UpdateFilter<ServerRoom>['$set']> }> {
     state.end_date = new Date()
 
     var outdatedState = room.henceforth_states[room.status.current_state_id]
@@ -26,9 +26,7 @@ export async function endDrawState<R extends ServerRoom>(socketPkg: SocketPackag
     } | {
         end_game?:
         { [id: string]: Player }
-    }
-
-    var endState: DrawState['end_state']
+    } | undefined
 
     if (state.type == DrawState.TYPE) {
         (state as DrawState).draw_data = room.latest_draw_data
@@ -38,11 +36,9 @@ export async function endDrawState<R extends ServerRoom>(socketPkg: SocketPackag
                 points: (state as DrawState).points
             }
         }
-        endState = (state as DrawState).end_state
-    } else {
-        bonus = {}
-        endState = DrawState.getEndState(room)
     }
+
+    var endState: DrawStateEnd = (removedPlayerId != undefined) ? 'end_game' : DrawState.getEndState(room)
 
     //#region CREATE NEXT STATE AFTER DRAW STATE
     if (endState == 'end_game') {
@@ -54,6 +50,11 @@ export async function endDrawState<R extends ServerRoom>(socketPkg: SocketPackag
             // PICK WORD STATE WITH ROUND NOTIFY
             var nextPickerId: string
             const idList = Object.keys(room.players)
+
+            if (removedPlayerId != undefined) {
+                const index = idList.indexOf(removedPlayerId)
+                if (index != -1) idList.splice(index, 1)
+            }
 
             nextPickerId = idList[Math.floor(Math.random() * idList.length)]
 
@@ -81,10 +82,13 @@ export async function endDrawState<R extends ServerRoom>(socketPkg: SocketPackag
                 bestPlayerIds.push(IDs[index])
             }
         }
+
+        if (bonus == undefined) bonus = {}
         bonus.end_game = room.players
 
         // reset all player score to 0, reset crown
         for (var id in room.players) {
+            if (id == removedPlayerId) continue
             $set[`players.${id}.score`] = 0
             $set[`players.${id}.winner`] = bestPlayerIds.includes(id)
         }
@@ -92,6 +96,11 @@ export async function endDrawState<R extends ServerRoom>(socketPkg: SocketPackag
         // PICK WORD STATE WITH ROUND NOTIFY
         var nextPickerId: string
         const idList = Object.keys(room.players)
+        // remove removedPlayerId
+        if (removedPlayerId != undefined) {
+            const index = idList.indexOf(removedPlayerId)
+            if (index != -1) idList.splice(index, 1)
+        }
 
         nextPickerId = idList[Math.floor(Math.random() * idList.length)]
 
@@ -104,6 +113,12 @@ export async function endDrawState<R extends ServerRoom>(socketPkg: SocketPackag
         // next as pickword state like usual
 
         const idList = Object.keys(room.players)
+        // remove removedPlayer in idList
+        if (removedPlayerId != undefined){
+            const index = idList.indexOf(removedPlayerId)
+            if (index != -1) idList.splice(index, 1)
+        }
+
         // delete done players in the list
         for (let key in room.current_round_done_players) {
             const index = idList.indexOf(key)
@@ -121,9 +136,10 @@ export async function endDrawState<R extends ServerRoom>(socketPkg: SocketPackag
         current_state_id: state.id,
         command: 'end',
         date: state.end_date,
+        next_state_id: nextState.id,
         bonus,
-        next_state_id: nextState.id
     }
+
     io.to(socketPkg.roomId).emit('new_states', {
         status,
         henceforth_states: { [nextState.id]: nextState }
@@ -141,25 +157,16 @@ export async function endDrawState<R extends ServerRoom>(socketPkg: SocketPackag
 
 export function registerEndDrawState(socketPkg: SocketPackage) {
     socketPkg.socket.on('end_draw_state', async function () {
-        console.log('[END DRAW STATE ON TIME OUT]');
         try {
-            var _id = { _id: new ObjectId(socketPkg.roomId) }
-            var room = await socketPkg.room.findOne(_id)
+            const filter = { _id: new ObjectId(socketPkg.roomId) }
+
+            var room = await socketPkg.room.findOne(filter)
             if (room == null) throw Error('room not found')
 
-            var state = getRunningState(room) as DrawState
+            var state = getRunningState(room)
             if (state.type != DrawState.TYPE || state.player_id != socketPkg.playerId) throw Error('wrong state')
 
-            var result = await endDrawState(socketPkg, room, state)
-
-            await socketPkg.room.updateOne(_id, result.updatePackage)
-
-            io.to(socketPkg.roomId).emit('new_states', {
-                status: result.updatePackage.$set.status,
-                henceforth_states: {
-                    [result.state.id]: result.state
-                }
-            })
+            await socketPkg.room.updateOne(filter, await endDrawState(socketPkg, room, state))
         } catch (e) {
             console.log(`[END DRAW STATE]: ${e}`);
         }
