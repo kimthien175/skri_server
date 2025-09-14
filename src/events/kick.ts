@@ -1,6 +1,6 @@
 import { ObjectId, UpdateFilter, WithId } from "mongodb";
 import { SocketPackage } from "../types/socket_package.js";
-import { getRunningState, ServerRoom } from "../types/room.js";
+import { ServerRoom } from "../types/room.js";
 import { Message, PlayerGotKickedMessage } from "../types/message.js";
 import { getNewRoomCode } from "../utils/get_room_code.js";
 import { io } from "../socket_io.js";

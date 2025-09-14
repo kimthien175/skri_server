@@ -20,6 +20,7 @@ import { registerListenGuessMessages } from "./events/player_guess.js";
 import { registerEndDrawState } from "./events/end_draw_state.js";
 import { registerLikeDislike} from "./events/like_dislike.js";
 import { registerLoadingMessages } from "./events/load_messages.js";
+import { registerReloading } from "./events/reload.js";
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -59,6 +60,7 @@ io.on("connection", (socket) => {
   registerEndDrawState(socketPackage)
   registerLikeDislike(socketPackage)
   registerLoadingMessages(socketPackage)
+  registerReloading(socketPackage)
 });
 
 export { httpServer, io };

@@ -1,12 +1,11 @@
 import { Mongo } from "../../utils/db/mongo.js";
 import { SocketPackage } from "../../types/socket_package.js";
 import { PrivateRoomJoinRequest, PrivateRoomRejoinRequest } from "../../types/type.js";
-import { PrivateRoom } from "../../types/room.js";
+import { PrivateRoom, RoomProjection } from "../../types/room.js";
 import { Random } from "../../utils/random/random.js";
 import { Filter, ObjectId, ReturnDocument, UpdateFilter } from "mongodb";
 import { PlayerJoinMessage } from "../../types/message.js";
 import { GameState } from "../state/state.js";
-import { messagesPageQuantity } from "../../events/load_messages.js";
 import { Player } from "../../types/player.js";
 
 /**
@@ -57,7 +56,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
             }
 
             var room = await Mongo.privateRooms.findOneAndUpdate(filter, updateFilter, {
-                projection: PrivateRoomProjection,
+                projection: RoomProjection,
                 returnDocument: ReturnDocument.AFTER
             })
             if (room == null) throw Error('room_not_found')
@@ -89,20 +88,4 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
             callback({ success: false, reason: e })
         }
     })
-}
-
-export const PrivateRoomProjection
-    = {
-    _id: 1,
-    host_player_id: 1,
-    options: 1,
-    players: 1,
-    settings: 1,
-    messages: { $slice: ["$messages", -messagesPageQuantity] },
-    henceforth_states: 1,
-    status: 1,
-    code: 1,
-    system: 1,
-    current_round: 1,
-    latest_draw_data: 1
 }

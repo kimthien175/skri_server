@@ -59,3 +59,21 @@ export interface PrivateRoom extends ServerRoom {
   host_player_id: string;
   options: RoomOptions;
 }
+
+export const messagesPageQuantity = 30;
+
+export const RoomProjection
+  = {
+  _id: 1,
+  host_player_id: 1,
+  options: 1,
+  players: 1,
+  settings: 1,
+  messages: { $slice: ["$messages", -messagesPageQuantity] },
+  henceforth_states: 1,
+  status: 1,
+  code: 1,
+  system: 1,
+  current_round: 1,
+  latest_draw_data: 1
+}

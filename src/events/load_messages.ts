@@ -1,8 +1,6 @@
 import { ObjectId } from "mongodb";
-import { SocketPackage } from "../types/socket_package";
-import { ServerRoom } from "../types/room";
-
-export const messagesPageQuantity = 30;
+import { SocketPackage } from "../types/socket_package.js";
+import { messagesPageQuantity, ServerRoom } from "../types/room.js";
 
 export async function registerLoadingMessages(socketPkg: SocketPackage) {
     socketPkg.socket.on('load_messages', async function (id: string, callback) {
