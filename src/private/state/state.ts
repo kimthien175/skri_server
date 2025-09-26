@@ -172,3 +172,10 @@ export class DrawState extends GameState {
 export type DrawStateEnd = 'end_round' | 'end_game' | null
 
 export type PlayersPointData = { [key: string]: number }
+
+export class PublicLobbyState extends GameState{
+    constructor(){
+        super(PublicLobbyState.TYPE)
+    }
+    static TYPE = 'public_lobby'
+}

@@ -1,8 +1,9 @@
-import { Collection, Db, MongoClient, OptionalId, ServerApiVersion, WithId } from "mongodb"
+import { Collection, Db, FindOptions, MongoClient, OptionalId, ServerApiVersion, WithId, WithTransactionCallback } from "mongodb"
 import { Specs } from "../../types/type";
 import { PrivateRoom, PublicRoom } from "../../types/room";
 import { NormalEnglishWordDoc, NormalVietWordDoc, WordDoc, } from "../random/type";
 import { ReportItem } from "../../types/report_item";
+import { Player } from "../../types/player";
 const uri = process.env.MONGO_URI as string
 const mongoClient = new MongoClient(uri, {
     serverApi: {
@@ -22,8 +23,11 @@ async function getLastestNews() {
     return doc
 }
 
-async function getLastestSpecs(): Promise<Specs> {
-    var cursor = Mongo.specs.find<Document>({}, { projection: { _id: 0 } }).sort({ _id: -1 }).limit(1)
+async function getLastestSpecs(isPublic?: true): Promise<Specs> {
+    const projection:FindOptions<Specs>['projection'] = { _id: 0 }
+    if (isPublic != undefined) projection.options = 0
+
+    var cursor = Mongo.specs.find<Document>({}, { projection  }).sort({ _id: -1 }).limit(1)
     var doc = await cursor.next()
     if (doc) {
         return doc as unknown as Specs
@@ -64,6 +68,10 @@ class Mongo {
         return Mongo._db.collection('publicRooms')
     }
 
+    static get publicLobby(): Collection<PublicRoom> {
+        return Mongo._db.collection('publicLobby');
+    }
+
     static famousNames() {
         return Mongo._db.collection('famousNames')
     }
@@ -80,6 +88,15 @@ class Mongo {
 
     static close() {
         mongoClient.close();
+    }
+
+    static async doSession<T=any>(callback: WithTransactionCallback<T>): Promise<T>{
+        const session = mongoClient.startSession()
+        try {
+            return await session.withTransaction(callback)
+        } finally {
+            await session.endSession();
+        }
     }
 }
 

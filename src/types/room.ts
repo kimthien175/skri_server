@@ -6,35 +6,31 @@ import { Player } from "./player";
 
 export type StateStatus = {
   current_state_id: GameState["id"];
+  date: Date
 } & (
-  | {
-      command: "start";
-      date?: Date;
-    }
-  | {
+    | { command: "start" }
+    | {
       command: "end";
-      date: Date;
       next_state_id: GameState["id"];
       bonus?: any
     }
-);
+  );
 
 type ClassProperties<C> = {
   [Key in keyof C as C[Key] extends Function ? never : Key]: C[Key];
 };
 
 export interface ServerRoom {
-  players: {[key: string]: Player};
+  players: { [key: string]: Player };
   settings: RoomSettings;
   messages: Message[];
   status: StateStatus;
   henceforth_states: Record<GameState["id"], GameState>;
   outdated_states: GameState[];
-  code: String;
   system: RoomSystem;
-  current_round_done_players: {[id: string]: true};
+  current_round_done_players: { [id: string]: true };
   current_round: number;
-  tickets: {[id: string]: ServerTicket} ;
+  tickets: { [id: string]: ServerTicket };
   used_words?: string[]
   latest_draw_data: DrawData
 }
@@ -52,10 +48,13 @@ export function getRunningState(room: ServerRoom): GameState {
 // }
 
 /** ful doc: including states*/
-export interface PublicRoom extends ServerRoom {}
+export interface PublicRoom extends ServerRoom {
+  is_available: boolean
+}
 
 /**ful doc: including states*/
 export interface PrivateRoom extends ServerRoom {
+  code: String;
   host_player_id: string;
   options: RoomOptions;
 }

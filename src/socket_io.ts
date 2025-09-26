@@ -21,6 +21,7 @@ import { registerEndDrawState } from "./events/end_draw_state.js";
 import { registerLikeDislike} from "./events/like_dislike.js";
 import { registerLoadingMessages } from "./events/load_messages.js";
 import { registerReloading } from "./events/reload.js";
+import { registerJoinPublicMatch } from "./events/join_public_match.js";
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -61,6 +62,7 @@ io.on("connection", (socket) => {
   registerLikeDislike(socketPackage)
   registerLoadingMessages(socketPackage)
   registerReloading(socketPackage)
+  registerJoinPublicMatch(socketPackage)
 });
 
 export { httpServer, io };

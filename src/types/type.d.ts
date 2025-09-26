@@ -5,11 +5,12 @@ import { ServerTicket } from "./ticket"
 type RoomResponse<T extends ServerRoom> =
     {
         success: true
-        data: RoomResponseData<T>
+        player: Player 
+        room: T
     }
     | {
         success: false
-        data: { type: 'room_not_found' } | { type: 'room_full' }
+        reason: any
     }
 
 interface RoomResponseData<T extends ServerRoom> {

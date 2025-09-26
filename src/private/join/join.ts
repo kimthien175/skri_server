@@ -1,6 +1,6 @@
 import { Mongo } from "../../utils/db/mongo.js";
 import { SocketPackage } from "../../types/socket_package.js";
-import { PrivateRoomJoinRequest, PrivateRoomRejoinRequest } from "../../types/type.js";
+import { PrivateRoomJoinRequest, PrivateRoomRejoinRequest, RoomResponse } from "../../types/type.js";
 import { PrivateRoom, RoomProjection } from "../../types/room.js";
 import { Random } from "../../utils/random/random.js";
 import { Filter, ObjectId, ReturnDocument, UpdateFilter } from "mongodb";
@@ -13,7 +13,8 @@ import { Player } from "../../types/player.js";
  * send full data, except `settings.custom_words` and states sensitive properties
  */
 export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
-    socketPkg.socket.on('join_private_room', async function (requestPkg: PrivateRoomJoinRequest | PrivateRoomRejoinRequest, callback: (arg: { success: true, data: { player: Player, room: PrivateRoom } } | { success: false, reason: any }) => void) {
+    socketPkg.socket.on('join_private_room', async function (requestPkg: PrivateRoomJoinRequest | PrivateRoomRejoinRequest, callback: (arg: RoomResponse<PrivateRoom>) => void
+    ) {
         try {
             await Mongo.connect()
             //#region PLAYER
@@ -81,11 +82,11 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
             delete (room as any)._id
             //#endregion
 
-            callback({ success: true, data: { player, room } })
+            callback({ success: true, player, room })
         } catch (e: any) {
             console.log(`[JOIN PRIVATE ROOM]: ${socketPkg.playerId} ${requestPkg}`)
             console.log(e);
-            callback({ success: false, reason: e })
+            callback({ success: false, reason: (e as Error).message })
         }
     })
 }
