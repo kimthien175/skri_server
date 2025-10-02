@@ -1,10 +1,11 @@
-import { ObjectId, UpdateFilter } from "mongodb"
+import { ObjectId, OptionalId, UpdateFilter } from "mongodb"
 import { getRunningState, PrivateRoom, ServerRoom } from "../../types/room.js"
 import { Player } from "../../types/player"
 import { Message, NewHostMessage } from "../../types/message.js"
-import { SocketPackage } from "../../types/socket_package.js"
+import {  SocketPackage } from "../../types/socket_package.js"
 import { io } from "../../socket_io.js"
 import { endDrawState } from "../../events/end_draw_state.js"
+import { Mutable } from "../../types/type.js"
 
 export abstract class GameState {
     constructor(public type: string, player_id?: Player['id']) {
@@ -40,17 +41,17 @@ export abstract class GameState {
      * @param firstMessage 
      * @returns 
      */
-    static async onPlayerLeave(room: ServerRoom, socketPkg: SocketPackage, firstMessage?: Message): Promise<UpdateFilter<ServerRoom>> {
+    static async onPlayerLeave<T extends ServerRoom>(room: T, socketPkg: SocketPackage<T>, firstMessage?: Message): Promise<Mutable<UpdateFilter<T>>[]> {
         var state = getRunningState(room)
 
-        var updateFilter: UpdateFilter<ServerRoom> =
+        var updateFilter: UpdateFilter<ServerRoom>[] =
             (state.type == DrawState.TYPE || state.type == PickWordState.TYPE) ?
-                await endDrawState(socketPkg, room, state, socketPkg.playerId) : {}
+                [await endDrawState(socketPkg, room, state, socketPkg.playerId)] : []
 
         var messages: Message[] = firstMessage != undefined ? [firstMessage] : []
 
         //#region CHANGE ROOM OWNER IF CURRENT PLAYER IS OWNER
-        if (!socketPkg.isPublicRoom && socketPkg.playerId == (room as PrivateRoom).host_player_id) {
+        if (!socketPkg.isPublicRoom && socketPkg.playerId == (room as unknown as PrivateRoom).host_player_id) {
             //#region find player to be new owner
             var players = room.players
             const idList = Object.keys(players)
@@ -61,32 +62,35 @@ export abstract class GameState {
             } while (newOwnerId == socketPkg.playerId)
             //#endregion
 
-            const newHostMsg = new NewHostMessage(newOwnerId, players[newOwnerId].name)
-            io.to(socketPkg.roomId).emit('new_host', newHostMsg)
+            const newHostMsg: Message = new NewHostMessage(newOwnerId, players[newOwnerId].name)
+            io.to(socketPkg.roomId).emit('new_host', newHostMsg);
 
-            messages.push(newHostMsg)
+            messages.push(newHostMsg);
 
-            updateFilter.$set = {
-                ...updateFilter.$set,
-                host_player_id: newOwnerId
-            }
+            (updateFilter as UpdateFilter<PrivateRoom>[]).push({
+                $set: {
+                    host_player_id: newOwnerId
+                }
+            });
         }
         //#endregion
 
         if (messages.length != 0) {
-            updateFilter.$push = {
-                ...updateFilter.$push,
-                messages: { $each: messages }
+            updateFilter.push({
+                $push: {
+                    messages: { $each: messages }
+                }
+            })
+        }
+
+        updateFilter.push({
+            $unset: {
+                [`players.${socketPkg.playerId}`]: "",
+                [`current_round_done_players.${socketPkg.playerId}`]: ""
             }
-        }
+        })
 
-        updateFilter.$unset = {
-            ...updateFilter.$unset,
-            [`players.${socketPkg.playerId}`]: "",
-            [`current_round_done_players.${socketPkg.playerId}`]: ""
-        }
-
-        return updateFilter
+        return updateFilter as UpdateFilter<T>[]
     }
 }
 
@@ -173,8 +177,8 @@ export type DrawStateEnd = 'end_round' | 'end_game' | null
 
 export type PlayersPointData = { [key: string]: number }
 
-export class PublicLobbyState extends GameState{
-    constructor(){
+export class PublicLobbyState extends GameState {
+    constructor() {
         super(PublicLobbyState.TYPE)
     }
     static TYPE = 'public_lobby'

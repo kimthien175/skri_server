@@ -3,7 +3,7 @@ import { Specs } from "../../types/type";
 import { PrivateRoom, PublicRoom } from "../../types/room";
 import { NormalEnglishWordDoc, NormalVietWordDoc, WordDoc, } from "../random/type";
 import { ReportItem } from "../../types/report_item";
-import { Player } from "../../types/player";
+
 const uri = process.env.MONGO_URI as string
 const mongoClient = new MongoClient(uri, {
     serverApi: {
@@ -56,17 +56,17 @@ class Mongo {
         return Mongo._db.collection('specs');
     }
 
-    static get privateRooms(): Collection<PrivateRoom> {
-        return Mongo._db.collection('privateRooms')
-    }
+    // static get privateRooms(): Collection<PrivateRoom> {
+    //     return Mongo._db.collection('privateRooms')
+    // }
 
-    static get endedPrivateRooms() {
-        return Mongo._db.collection('endedPrivateRooms')
-    }
+    // static get endedPrivateRooms() {
+    //     return Mongo._db.collection('endedPrivateRooms')
+    // }
 
-    static get publicRooms(): Collection<PublicRoom> {
-        return Mongo._db.collection('publicRooms')
-    }
+    // static get publicRooms(): Collection<PublicRoom> {
+    //     return Mongo._db.collection('publicRooms')
+    // }
 
     static get publicLobby(): Collection<PublicRoom> {
         return Mongo._db.collection('publicLobby');

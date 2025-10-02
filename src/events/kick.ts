@@ -1,12 +1,12 @@
 import { ObjectId, UpdateFilter, WithId } from "mongodb";
-import { SocketPackage } from "../types/socket_package.js";
-import { ServerRoom } from "../types/room.js";
+import {  getNewRoomCode, SocketPackage } from "../types/socket_package.js";
+import { PrivateRoom, PublicRoom, ServerRoom } from "../types/room.js";
 import { Message, PlayerGotKickedMessage } from "../types/message.js";
-import { getNewRoomCode } from "../utils/get_room_code.js";
 import { io } from "../socket_io.js";
 import { ServerTicket } from "../types/ticket.js";
 import { Player } from "../types/player.js";
 import { GameState } from "../private/state/state.js";
+import { Mutable } from "../types/type.js";
 
 export const registerKick = async function (socketPkg: SocketPackage) {
     socketPkg.socket.on('host_kick', async function (victimId: string, callback: (res: {
@@ -38,20 +38,19 @@ export const registerKick = async function (socketPkg: SocketPackage) {
 
 /** emit to clients, not save to db, return update filter for other tasks
  *  */
-export async function kick<R extends ServerRoom>(victim: Player, socketPkg: SocketPackage, room: WithId<R>, firstMessage?: Message): Promise<UpdateFilter<ServerRoom>> {
+export async function kick<T extends ServerRoom>(victim: Player, socketPkg: SocketPackage<T>, room: WithId<T>, firstMessage?: Message): Promise<UpdateFilter<T>> {
     var message = new PlayerGotKickedMessage(victim.name)
-    var newCode = await getNewRoomCode(socketPkg.room)
+    var newCode = await getNewRoomCode(socketPkg.roomType)
 
     // create new ticket or check for existing ticket
     var ticketSet = await _getTicket(room.tickets, victim.id)
 
-    var updateFilter: UpdateFilter<ServerRoom> = await GameState.onPlayerLeave(room, socketPkg, firstMessage)
+    var updateFilter = await GameState.onPlayerLeave(room as T, socketPkg, firstMessage)
 
-    updateFilter.$set = {
-        ...updateFilter.$set,
+    updateFilter.push({
         code: newCode,
         [`tickets.${ticketSet.id}`]: ticketSet.ticket
-    }
+    })
 
     // delete valid_date
     var clientTicket = { id: ticketSet.id, victim_id: ticketSet.ticket.victim_id }

@@ -3,7 +3,7 @@ import { SocketPackage } from "../../types/socket_package.js";
 import { PrivateRoomJoinRequest, PrivateRoomRejoinRequest, RoomResponse } from "../../types/type.js";
 import { PrivateRoom, RoomProjection } from "../../types/room.js";
 import { Random } from "../../utils/random/random.js";
-import { Filter, ObjectId, ReturnDocument, UpdateFilter } from "mongodb";
+import { Collection, Filter, ObjectId, ReturnDocument, UpdateFilter } from "mongodb";
 import { PlayerJoinMessage } from "../../types/message.js";
 import { GameState } from "../state/state.js";
 import { Player } from "../../types/player.js";
@@ -12,7 +12,7 @@ import { Player } from "../../types/player.js";
  * 
  * send full data, except `settings.custom_words` and states sensitive properties
  */
-export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
+export function registerJoinPrivateRoom(socketPkg: SocketPackage<PrivateRoom>) {
     socketPkg.socket.on('join_private_room', async function (requestPkg: PrivateRoomJoinRequest | PrivateRoomRejoinRequest, callback: (arg: RoomResponse<PrivateRoom>) => void
     ) {
         try {
@@ -26,6 +26,13 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
             if (player.name === '') {
                 player.name = (await Random.getWords({ word_count: 1, language: requestPkg.lang }))[0];
             }
+            //#endregion
+
+            //#region SOCKET PACKAGE
+            socketPkg.isOwner = false
+            socketPkg.name = player.name
+            socketPkg.roomType = 'private'
+            socketPkg.playerId = player.id
             //#endregion
 
             var ticketId = (requestPkg as PrivateRoomRejoinRequest).id
@@ -56,7 +63,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
                 $set: { [`players.${player.id}`]: player }
             }
 
-            var room = await Mongo.privateRooms.findOneAndUpdate(filter, updateFilter, {
+            var room = await socketPkg.room.findOneAndUpdate(filter, updateFilter, {
                 projection: RoomProjection,
                 returnDocument: ReturnDocument.AFTER
             })
@@ -64,10 +71,6 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage) {
 
             // modify socketPkg
             socketPkg.roomId = room._id.toString()
-            socketPkg.isOwner = false
-            socketPkg.name = player.name
-            socketPkg.isPublicRoom = false
-            socketPkg.playerId = player.id
 
             await socketPkg.socket.join(socketPkg.roomId)
 

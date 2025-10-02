@@ -8,11 +8,11 @@ import { io } from "../../socket_io.js";
 
 const WordsOptions = 3;
 
-export function registerStartPrivateGame(socketPkg: SocketPackage) {
+export function registerStartPrivateGame(socketPkg: SocketPackage<PrivateRoom>) {
     socketPkg.socket.on('start_private_game', async function (gameSettings: RoomSettings, callback: (res: { success: true } | { success: false, reason: any }) => void) {
         try {
             //#region PREPARE ROOM
-            var roomCol = socketPkg.room as any as Collection<PrivateRoom>
+            var roomCol = socketPkg.room
             var filter: Filter<ServerRoom> = {
                 _id: new ObjectId(socketPkg.roomId),
                 host_player_id: socketPkg.playerId

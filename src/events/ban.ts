@@ -1,11 +1,10 @@
-import { ObjectId, UpdateFilter, WithId } from "mongodb"
-import { SocketPackage } from "../types/socket_package.js"
-import { getNewRoomCode } from "../utils/get_room_code.js"
+import { ObjectId, UpdateFilter } from "mongodb"
+import { getNewRoomCode, SocketPackage } from "../types/socket_package.js"
 import { PlayerGotBannedMessage } from "../types/message.js"
 import { PrivateRoom, ServerRoom } from "../types/room.js"
 import { io } from "../socket_io.js"
 
-export const registerBan = async function (socketPkg: SocketPackage) {
+export const registerBan = async function (socketPkg: SocketPackage<PrivateRoom>) {
     socketPkg.socket.on('host_ban', async function (victimId: string, callback: (res: { success: true } | { success: false, reason: any }) => void) {
         // verify host
         try {
@@ -19,7 +18,7 @@ export const registerBan = async function (socketPkg: SocketPackage) {
 
             var victim = room.players[victimId]
 
-            var new_code = await getNewRoomCode(socketPkg.room)
+            var new_code = await getNewRoomCode('private')
             var message = new PlayerGotBannedMessage(room.players[victimId].name)
 
             var updateFilter: UpdateFilter<ServerRoom> = {

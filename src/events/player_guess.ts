@@ -29,7 +29,7 @@ export function registerListenGuessMessages(socketPkg: SocketPackage) {
 
                 state.points[socketPkg.playerId as string] = point
 
-                var updatePkg: Mutable<UpdateFilter<ServerRoom> & { $set: NonNullable<UpdateFilter<ServerRoom>['$set']> }> =
+                var updatePkg: UpdateFilter<ServerRoom>  =
                     DrawState.isEndState(state, room.players) ?
                         await endDrawState(socketPkg, room, state) :
                         { $set: {} }

@@ -1,17 +1,23 @@
-import { ObjectId, UpdateFilter } from "mongodb";
+import { ObjectId, WithId } from "mongodb";
 import { SocketPackage } from "../types/socket_package.js";
 import { Mongo } from "../utils/db/mongo.js";
 import { PlayerLeaveMessage } from "../types/message.js";
-import { getRunningState, PrivateRoom } from "../types/room.js";
 import { GameState } from "./state/state.js";
+import { ServerRoom } from "../types/room.js";
 
 
 export async function onLeavingRoom(socketPkg: SocketPackage) {
     try {
-        const filter = {
-            _id: new ObjectId(socketPkg.roomId),
+        const filter = socketPkg.getFilter({
             [`players.${socketPkg.playerId}`]: { $exists: true }
-        }
+        })
+
+        if (socketPkg.isPublicRoom){
+            //#region LOBBY CASE
+            // if a player is in lobby - which mean alone as well, just delete it
+            if ((await Mongo.publicLobby.findOneAndDelete(filter)) != null) return
+            //#endregion
+        } 
 
         var room = await socketPkg.room.findOne(filter)
         if (room == null) throw Error('room not found')
@@ -20,10 +26,10 @@ export async function onLeavingRoom(socketPkg: SocketPackage) {
         if (Object.keys(room.players).length <= 1) {
             console.log('DISCONNECT CASE 1');
             // delete room and move to endedPrivateRoom
-            await Promise.all([
-                socketPkg.room.deleteOne(filter),
-                Mongo.endedPrivateRooms.insertOne(room)
-            ])
+            await Mongo.doSession(async (session)=>{
+                await socketPkg.room.deleteOne(filter, {session})
+                await socketPkg.endedRoom.insertOne(room as WithId<ServerRoom>, {session})
+            })
             console.log(`onLeavingPrivateRoom: done moving to endedPrivateRoom`);
             return
         }
@@ -33,7 +39,7 @@ export async function onLeavingRoom(socketPkg: SocketPackage) {
         const playerLeaveMsg = new PlayerLeaveMessage(socketPkg.playerId as string, socketPkg.name)
         socketPkg.io.to(socketPkg.roomId).emit('player_leave', playerLeaveMsg)
 
-        var updateFilter: UpdateFilter<PrivateRoom> =
+        const updateFilter =
             await GameState.onPlayerLeave(room, socketPkg, playerLeaveMsg)
 
         var updateResult = await socketPkg.room.updateOne(filter, updateFilter);

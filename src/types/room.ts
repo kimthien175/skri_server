@@ -21,6 +21,7 @@ type ClassProperties<C> = {
 };
 
 export interface ServerRoom {
+  code: String;
   players: { [key: string]: Player };
   settings: RoomSettings;
   messages: Message[];
@@ -54,7 +55,6 @@ export interface PublicRoom extends ServerRoom {
 
 /**ful doc: including states*/
 export interface PrivateRoom extends ServerRoom {
-  code: String;
   host_player_id: string;
   options: RoomOptions;
 }

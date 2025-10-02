@@ -1,18 +1,18 @@
 import { ObjectId, UpdateFilter } from "mongodb";
 import { getRunningState, PrivateRoom, ServerRoom, StateStatus } from "../types/room.js";
-import { SocketPackage } from "../types/socket_package.js";
+import {  SocketPackage } from "../types/socket_package.js";
 import { DrawState, DrawStateEnd, GameState, PickWordState, PrivatePreGameState } from "../private/state/state.js";
 import { Mutable } from "../types/type.js";
 import { Random } from "../utils/random/random.js";
 import { io } from "../socket_io.js";
 import { Player } from "../types/player.js";
 
-export async function endDrawState(socketPkg: SocketPackage, room: ServerRoom, state: GameState, removedPlayerId?: Player['id']): Promise<UpdateFilter<ServerRoom> & { $set: NonNullable<UpdateFilter<ServerRoom>['$set']> }> {
+export async function endDrawState<T extends ServerRoom>(socketPkg: SocketPackage<T>, room: T, state: GameState, removedPlayerId?: Player['id']): Promise<Mutable<UpdateFilter<T>>> {
     state.end_date = new Date()
 
     var outdatedState = room.henceforth_states[room.status.current_state_id]
 
-    var $set: Mutable<NonNullable<UpdateFilter<ServerRoom>['$set']>> = {}
+    var $set = {} as NonNullable<Mutable<UpdateFilter<ServerRoom>['$set']>>
 
     var nextState: GameState
 
@@ -114,7 +114,7 @@ export async function endDrawState(socketPkg: SocketPackage, room: ServerRoom, s
 
         const idList = Object.keys(room.players)
         // remove removedPlayer in idList
-        if (removedPlayerId != undefined){
+        if (removedPlayerId != undefined) {
             const index = idList.indexOf(removedPlayerId)
             if (index != -1) idList.splice(index, 1)
         }
@@ -148,11 +148,12 @@ export async function endDrawState(socketPkg: SocketPackage, room: ServerRoom, s
     $set.status = status
     $set[`henceforth_states.${nextState.id}`] = nextState;
 
-    return {
+    var result: UpdateFilter<ServerRoom>= {
         $set,
         $push: { outdated_states: outdatedState },
         $unset: { [`henceforth_states.${outdatedState.id}`]: "" }
     }
+    return result as UpdateFilter<T>
 }
 
 export function registerEndDrawState(socketPkg: SocketPackage) {

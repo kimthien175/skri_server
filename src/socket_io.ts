@@ -18,10 +18,11 @@ import { registerPickWord } from "./events/pick_word.js";
 import { registerHint } from "./events/hint.js";
 import { registerListenGuessMessages } from "./events/player_guess.js";
 import { registerEndDrawState } from "./events/end_draw_state.js";
-import { registerLikeDislike} from "./events/like_dislike.js";
+import { registerLikeDislike } from "./events/like_dislike.js";
 import { registerLoadingMessages } from "./events/load_messages.js";
 import { registerReloading } from "./events/reload.js";
 import { registerJoinPublicMatch } from "./events/join_public_match.js";
+import { PrivateRoom, PublicRoom } from "./types/room.js";
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -46,14 +47,23 @@ io.on("connection", (socket) => {
 
     onLeavingRoom(socketPackage);
   });
-  registerInitPrivateRoom(socketPackage);
-  registerJoinPrivateRoom(socketPackage);
+
+  //#region PRIVATE ROOM
+  var privateSocketPackage = socketPackage as unknown as SocketPackage<PrivateRoom>
+  registerInitPrivateRoom(privateSocketPackage)
+  registerJoinPrivateRoom(privateSocketPackage)
+  registerStartPrivateGame(privateSocketPackage)
+  registerBan(privateSocketPackage)
+  //#endregion
+
+  //#region PUBLIC ROOM
+  registerJoinPublicMatch(socketPackage as unknown as SocketPackage<PublicRoom>)
+  //#endregion
+
   registerListenChatMessages(socketPackage);
   registerChangeSettings(socketPackage);
   registerVoteKick(socketPackage);
   registerKick(socketPackage)
-  registerBan(socketPackage)
-  registerStartPrivateGame(socketPackage)
   registerPickWord(socketPackage)
   registerHint(socketPackage)
   registerPlayerDraw(socketPackage)
@@ -62,7 +72,6 @@ io.on("connection", (socket) => {
   registerLikeDislike(socketPackage)
   registerLoadingMessages(socketPackage)
   registerReloading(socketPackage)
-  registerJoinPublicMatch(socketPackage)
 });
 
 export { httpServer, io };
