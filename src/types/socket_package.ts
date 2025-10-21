@@ -6,27 +6,29 @@ import { Collection, ObjectId, UpdateFilter, WithId } from 'mongodb';
 import { GameState } from '../private/state/state.js';
 import { Player } from './player.js';
 import cryptoRandomString from "crypto-random-string";
+import { io } from '../socket_io.js';
+import { redisClient } from '../utils/redis.js';
 
 type _PUBLIC = 'public'
 type _PRIVATE = 'private'
 type RoomType = _PUBLIC | _PRIVATE
 
-type _MappingRoomType<T> = T extends PrivateRoom ? _PRIVATE : T extends PublicRoom ? _PUBLIC: never
-type _MappingIsPublic<T> = T extends PrivateRoom ? false : T extends PublicRoom ? true : never
+type _MappingRoomType<T> = T extends PrivateRoom ? _PRIVATE : T extends PublicRoom ? _PUBLIC : never
 
 //export type AnyRoom = PublicRoom | PrivateRoom
 export class SocketPackage<T extends ServerRoom = ServerRoom> {
-    constructor(io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>,
-        socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) {
-        this.io = io;
-        this.socket = socket;
-    }
-    io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
-    socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
+    constructor(
+        public socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) { }
 
-    _roomId?: string
-    get roomId(): string { return this._roomId as string }
-    set roomId(code: string) { this._roomId = code }
+
+    async getRoomId() {
+        const roomId = await redisClient.hGet(this.socket.id, 'room_id')
+        if (roomId == null) throw Error('NULL ROOM ID')
+        return roomId
+    }
+    async setRoomId(roomId: string) {
+        return redisClient.hSet(this.socket.id, 'room_id', roomId)
+    }
 
     _name?: string
     get name(): string { return this._name as string }
@@ -44,32 +46,34 @@ export class SocketPackage<T extends ServerRoom = ServerRoom> {
         return Mongo._db.collection(this.roomType)
     }
 
-    getFilter(addOn?: UpdateFilter<ServerRoom>): UpdateFilter<ServerRoom> {
-        return { _id: new ObjectId(this.roomId), ...addOn }
+    async getFilter(addOn?: UpdateFilter<ServerRoom>): Promise<UpdateFilter<ServerRoom>> {
+        var roomId = await this.getRoomId()
+        return { _id: new ObjectId(roomId), ...addOn }
     }
 
     get endedRoom(): Collection<ServerRoom> {
         return Mongo._db.collection(`ended_${this.roomType}`)
     }
 
-    get isPublicRoom(): _MappingIsPublic<T> { return (this.roomType === 'public')  as _MappingIsPublic<T> }
-
-    _isOwner?: boolean
-    set isOwner(value: boolean) { this._isOwner = value }
-    get isOwner() { return this._isOwner === true }
+    // _isOwner?: boolean
+    // set isOwner(value: boolean) { this._isOwner = value }
+    // get isOwner() { return this._isOwner === true }
 
     playerId?: string
 
-    emitNewStates(to: { wholeRoom: true } | { except: Player['id'] } | { only: Player['id'] }, status: StateStatus, state: GameState) {
+    async emitNewStates(to: { wholeRoom: true } | { except: Player['id'] } | { only: Player['id'] }, status: StateStatus, state: GameState) {
         var sender: BroadcastOperator<DecorateAcknowledgementsWithMultipleResponses<DefaultEventsMap>, any>
+
+        var roomId = await this.getRoomId()
+
         if ((to as any).wholeRoom != undefined) {
-            sender = this.io.to(this.roomId)
+            sender = io.to(roomId)
         } else {
             var except: Player['id'] = (to as any).except
             if (except != undefined) {
-                sender = this.io.to(this.roomId).except(except)
+                sender = io.to(roomId).except(except)
             } else {
-                sender = this.io.to((to as any).only)
+                sender = io.to((to as any).only)
             }
         }
 

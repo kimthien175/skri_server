@@ -29,7 +29,7 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage<PrivateRoom
 
         //#region MODIFY SOCKET PACKAGE
         socketPackage.name = player.name;
-        socketPackage.isOwner = true;
+        //socketPackage.isOwner = true;
         socketPackage.playerId = player.id
         socketPackage.roomType = 'private'
         //#endregion
@@ -61,7 +61,7 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage<PrivateRoom
 
         // insert code to room
         var instertResult = await socketPackage.room.insertOne(room);
-        socketPackage.roomId = instertResult.insertedId.toString();
+        await socketPackage.setRoomId(instertResult.insertedId.toString())
 
         // join room
         await socket.join(instertResult.insertedId.toString());

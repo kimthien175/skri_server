@@ -6,11 +6,12 @@ export async function registerLoadingMessages(socketPkg: SocketPackage) {
     socketPkg.socket.on('load_messages', async function (id: string, callback) {
         try {
             const msgId = new ObjectId(id)
+            const roomId = await socketPkg.getRoomId()
 
             const pipeline = [
                 {
                     $match: {
-                        _id: new ObjectId(socketPkg.roomId),
+                        _id: new ObjectId(roomId),
                         [`players.${socketPkg.playerId}`]: { $exists: true },
                         "messages.id": msgId
                     }

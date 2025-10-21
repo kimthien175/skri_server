@@ -10,16 +10,17 @@ export function registerListenChatMessages(socketPkg: SocketPackage) {
         await Mongo.connect()
         try {
             var msg = new PlayerChatMessage(socketPkg.playerId as string, socketPkg.name, chat)
+            const roomId = await socketPkg.getRoomId()
 
             await socketPkg.room.updateOne(
                 {
-                    _id: new ObjectId(socketPkg.roomId),
+                    _id: new ObjectId(roomId),
                     [`players.${socketPkg.playerId}`]: { $exists: true }
                 },
                 { $push: { messages: msg } }
             )
 
-            socketPkg.socket.to(socketPkg.roomId).emit('player_chat', msg)
+            socketPkg.socket.to(roomId).emit('player_chat', msg)
             console.log(`player_chat:${socketPkg.playerId}: ${chat}`);
 
 

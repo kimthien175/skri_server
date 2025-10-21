@@ -1,6 +1,6 @@
 import { RoomOptions, RoomSettings, RoomSystem } from "./type";
 import { Message } from "./message";
-import { GameState } from "../private/state/state";
+import { DrawState, GameState } from "../private/state/state";
 import { ServerTicket } from "./ticket";
 import { Player } from "./player";
 
@@ -12,9 +12,19 @@ export type StateStatus = {
     | {
       command: "end";
       next_state_id: GameState["id"];
-      bonus?: any
+      bonus?: StatusBonus
     }
   );
+
+type StatusBonus = {
+  end_state?: {
+    word: string,
+    points: DrawState['points']
+  }
+
+  end_game?:
+  { [id: string]: Player }
+}
 
 type ClassProperties<C> = {
   [Key in keyof C as C[Key] extends Function ? never : Key]: C[Key];

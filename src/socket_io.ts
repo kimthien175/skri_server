@@ -33,17 +33,14 @@ const io = new Server(httpServer, {
   connectionStateRecovery: {},
 });
 
-io.on("connection", (socket) => {
-  const socketPackage: SocketPackage = new SocketPackage(
-    io,
-    socket,
-    // public room id: p_... private: room 0-9a-z
-  );
+
+io.on("connection", async (socket) => {
+  const socketPackage: SocketPackage = new SocketPackage(socket)
 
   console.log("SOCKET.IO: CONNECTED");
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     console.log(`player with socket ID ${socket.id} disconnected`);
-    console.log(`SocketIO.disconnect: roomId: ${socketPackage.roomId}`);
+    console.log(`SocketIO.disconnect: roomId: ${await socketPackage.getRoomId()}`);
 
     onLeavingRoom(socketPackage);
   });

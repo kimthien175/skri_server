@@ -8,11 +8,11 @@ export const registerBan = async function (socketPkg: SocketPackage<PrivateRoom>
     socketPkg.socket.on('host_ban', async function (victimId: string, callback: (res: { success: true } | { success: false, reason: any }) => void) {
         // verify host
         try {
-            const filter: UpdateFilter<PrivateRoom> = {
-                _id: new ObjectId(socketPkg.roomId),
+            const roomId = await socketPkg.getRoomId()
+            const filter: UpdateFilter<PrivateRoom> = await socketPkg.getFilter({
                 host_player_id: socketPkg.playerId,
                 [`players.${victimId}`]: { $exists: true }
-            }
+            })
             var room = await socketPkg.room.findOne(filter)
             if (room == null) throw Error('room not found')
 
@@ -35,7 +35,7 @@ export const registerBan = async function (socketPkg: SocketPackage<PrivateRoom>
 
 
             socketPkg.socket.to(victim.socket_id).emit('player_got_banned', { victim_id: victimId })
-            io.to(socketPkg.roomId).except(victim.socket_id).emit('player_got_banned', {
+            io.to(roomId).except(victim.socket_id).emit('player_got_banned', {
                 message, new_code, victim_id: victimId
             })
 

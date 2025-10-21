@@ -29,7 +29,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage<PrivateRoom>) {
             //#endregion
 
             //#region SOCKET PACKAGE
-            socketPkg.isOwner = false
+            //socketPkg.isOwner = false
             socketPkg.name = player.name
             socketPkg.roomType = 'private'
             socketPkg.playerId = player.id
@@ -70,12 +70,13 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage<PrivateRoom>) {
             if (room == null) throw Error('room_not_found')
 
             // modify socketPkg
-            socketPkg.roomId = room._id.toString()
+            const roomId = room._id.toString()
+            await socketPkg.setRoomId(roomId) 
 
-            await socketPkg.socket.join(socketPkg.roomId)
+            await socketPkg.socket.join(roomId)
 
             // notify other players
-            socketPkg.socket.to(socketPkg.roomId).emit('player_join', { message: updateFilter.$push.messages, player })
+            socketPkg.socket.to(roomId).emit('player_join', { message: updateFilter.$push.messages, player })
 
             //#region REMOVE SENSITIVE INFORMATION BEFORE SENDING TO CLIENT
             delete room.settings.custom_words

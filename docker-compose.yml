@@ -5,7 +5,8 @@ services:
     ports:
       - '4000:4000'
     environment:
-      - MONGO_URI=mongodb://db:27017/?directConnection=true
+      MONGO_URI: mongodb://db:27017/?directConnection=true
+      REDIS_URI: redis://redis:6379
     volumes:
       - ./src:/app/src
       - ./package.json:/app/package.json
@@ -30,6 +31,10 @@ services:
       sh -c "sleep 5; mongosh \"mongodb://db:27017\" --eval '
       rs.initiate()
       '"
+
+  redis:
+    container_name: skribbl_redis
+    image: redis
 
 volumes:
   db_data:

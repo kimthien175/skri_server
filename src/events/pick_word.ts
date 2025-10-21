@@ -12,7 +12,8 @@ export function registerPickWord(socketPkg: SocketPackage) {
         // emit to players
         console.log(`[PICK WORD] received word: ${word}`);
         try {
-            const filter: Filter<ServerRoom> = { _id: new ObjectId(socketPkg.roomId) }
+            const roomId = await socketPkg.getRoomId()
+            const filter: Filter<ServerRoom> = { _id: new ObjectId(roomId) }
 
             var room = await socketPkg.room.findOne(filter)
             if (room == null) throw Error('room not found')
@@ -58,7 +59,7 @@ export function registerPickWord(socketPkg: SocketPackage) {
 
             drawState.removeSensitiveProperties()
 
-            socketPkg.socket.to(socketPkg.roomId)
+            socketPkg.socket.to(roomId)
                 .emit('new_states', { status, henceforth_states: { [drawState.id]: drawState } })
         } catch (e: any) {
             console.log(`[PICK_WORD]: ${e}`);

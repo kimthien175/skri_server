@@ -1,5 +1,5 @@
 
-import { MatchKeysAndValues, ObjectId, UpdateFilter } from "mongodb";
+import { MatchKeysAndValues, UpdateFilter } from "mongodb";
 import { SocketPackage } from "../types/socket_package.js";
 import { DrawState } from "../private/state/state.js";
 import { ServerRoom } from "../types/room.js";
@@ -9,8 +9,9 @@ import { PlayerStartDrawingMessage } from "../types/message.js";
 export function registerPlayerDraw(socketPkg: SocketPackage) {
     socketPkg.socket.on('draw:send_past', async (drawStep: DrawStep) => {
         try {
-            var objectId = new ObjectId(socketPkg.roomId)
-            var room = await socketPkg.room.findOne({ _id: objectId })
+            const roomId = await socketPkg.getRoomId()
+            const filter = await socketPkg.getFilter()
+            var room = await socketPkg.room.findOne(filter)
 
             if (room == null) throw Error('room not found')
 
@@ -34,14 +35,14 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
                     messages: msg
                 }
 
-                io.to(socketPkg.roomId).emit('system_message', msg)
+                io.to(roomId).emit('system_message', msg)
             }
 
 
-            await socketPkg.room.updateOne({ _id: objectId }, updatePkg)
+            await socketPkg.room.updateOne(filter, updatePkg)
 
             // emit spectators
-            socketPkg.socket.to(socketPkg.roomId).emit('draw:send_past', drawStep)
+            socketPkg.socket.to(roomId).emit('draw:send_past', drawStep)
         } catch (e) {
             console.log(e)
         }
@@ -49,8 +50,9 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
     socketPkg.socket.on('draw:remove_past', async (targetId: number) => {
         try {
-            var objectId = new ObjectId(socketPkg.roomId)
-            var room = await socketPkg.room.findOne({ _id: objectId })
+            const roomId = await socketPkg.getRoomId()
+            const filter = await socketPkg.getFilter()
+            var room = await socketPkg.room.findOne(filter)
 
             if (room == null) throw Error('room not found')
 
@@ -81,10 +83,10 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
                 }
             }
 
-            await socketPkg.room.updateOne({ _id: objectId }, updatePkg)
+            await socketPkg.room.updateOne(filter, updatePkg)
 
             // emit spectators
-            socketPkg.socket.to(socketPkg.roomId).emit('draw:remove_past', targetId)
+            socketPkg.socket.to(roomId).emit('draw:remove_past', targetId)
         } catch (e) {
             console.log(e)
         }
@@ -92,8 +94,9 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
     socketPkg.socket.on('draw:start_current', async (drawStep: DrawStep) => {
         try {
-            var objectId = new ObjectId(socketPkg.roomId)
-            var room = await socketPkg.room.findOne({ _id: objectId })
+            const roomId = await socketPkg.getRoomId()
+            const filter = socketPkg.getRoomId()
+            var room = await socketPkg.room.findOne(filter)
 
             if (room == null) throw Error('room not found')
 
@@ -110,13 +113,13 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
                     messages: msg
                 }
 
-                io.to(socketPkg.roomId).emit('system_message', msg)
+                io.to(roomId).emit('system_message', msg)
             }
 
-            await socketPkg.room.updateOne({ _id: objectId }, updatePkg)
+            await socketPkg.room.updateOne(filter, updatePkg)
 
             // emit spectators
-            socketPkg.socket.to(socketPkg.roomId).emit('draw:start_current', drawStep)
+            socketPkg.socket.to(roomId).emit('draw:start_current', drawStep)
         } catch (e) {
             console.log(e)
         }
@@ -124,25 +127,31 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
     socketPkg.socket.on('draw:update_current', async (drawStepAddon) => {
         try {
-            var objectId = new ObjectId(socketPkg.roomId)
-            var room = await socketPkg.room.findOne({ _id: objectId })
+            const roomId = await socketPkg.getRoomId()
+            const filter = await socketPkg.getFilter()
+            var room = await socketPkg.room.findOne(filter)
 
             if (room == null) throw Error('room not found')
 
-            await socketPkg.room.updateOne({ _id: objectId }, {
+            await socketPkg.room.updateOne(filter, {
                 $push: {
                     [`latest_draw_data.current_step.points`]: drawStepAddon.point
                 }
             })
 
             // emit spectators
-            socketPkg.socket.to(socketPkg.roomId).emit('draw:update_current', drawStepAddon)
+            socketPkg.socket.to(roomId).emit('draw:update_current', drawStepAddon)
         } catch (e) {
             console.log(e)
         }
     })
 
-    socketPkg.socket.on('draw:end_current', async (data) =>
-        socketPkg.socket.to(socketPkg.roomId).emit('draw:end_current', data)
-    )
+    socketPkg.socket.on('draw:end_current', async (data) => {
+        try {
+            socketPkg.socket.to(await socketPkg.getRoomId()).emit('draw:end_current', data)
+
+        } catch (e) {
+            console.log(`[DRAW:END_CURRENT] ${e}`);
+        }
+    })
 }

@@ -1,12 +1,11 @@
 import { ObjectId, UpdateFilter, WithId } from "mongodb";
-import {  getNewRoomCode, SocketPackage } from "../types/socket_package.js";
-import { PrivateRoom, PublicRoom, ServerRoom } from "../types/room.js";
-import { Message, PlayerGotKickedMessage } from "../types/message.js";
+import { getNewRoomCode, SocketPackage } from "../types/socket_package.js";
+import { ServerRoom } from "../types/room.js";
+import { PlayerGotKickedMessage } from "../types/message.js";
 import { io } from "../socket_io.js";
 import { ServerTicket } from "../types/ticket.js";
 import { Player } from "../types/player.js";
-import { GameState } from "../private/state/state.js";
-import { Mutable } from "../types/type.js";
+import { handleCasesWhenPlayerLeave } from "../private/disconnect.js";
 
 export const registerKick = async function (socketPkg: SocketPackage) {
     socketPkg.socket.on('host_kick', async function (victimId: string, callback: (res: {
@@ -16,11 +15,10 @@ export const registerKick = async function (socketPkg: SocketPackage) {
         try {
             if (victimId == socketPkg.playerId) throw Error("host can't kick themself")
 
-            const filter = {
-                _id: new ObjectId(socketPkg.roomId),
+            const filter = await socketPkg.getFilter({
                 host_player_id: socketPkg.playerId,
                 [`players.${victimId}`]: { $exists: true }
-            }
+            })
 
             var room = await socketPkg.room.findOne(filter)
             if (room == null) throw Error('room not found')
@@ -38,26 +36,35 @@ export const registerKick = async function (socketPkg: SocketPackage) {
 
 /** emit to clients, not save to db, return update filter for other tasks
  *  */
-export async function kick<T extends ServerRoom>(victim: Player, socketPkg: SocketPackage<T>, room: WithId<T>, firstMessage?: Message): Promise<UpdateFilter<T>> {
-    var message = new PlayerGotKickedMessage(victim.name)
-    var newCode = await getNewRoomCode(socketPkg.roomType)
-
+export async function kick(victim: Player, socketPkg: SocketPackage, room: WithId<ServerRoom>): Promise<UpdateFilter<ServerRoom>> {
+    const roomId = await socketPkg.getRoomId()
+    const message = new PlayerGotKickedMessage(victim.name)
+    const newCode = await getNewRoomCode(socketPkg.roomType)
     // create new ticket or check for existing ticket
-    var ticketSet = await _getTicket(room.tickets, victim.id)
+    const ticketSet = await _getTicket(room.tickets, victim.id)
 
-    var updateFilter = await GameState.onPlayerLeave(room as T, socketPkg, firstMessage)
-
-    updateFilter.push({
-        code: newCode,
-        [`tickets.${ticketSet.id}`]: ticketSet.ticket
-    })
+    const updateFilter: UpdateFilter<ServerRoom>[] = [
+        {
+            $set: {
+                code: newCode,
+                [`tickets.${ticketSet.id}`]: ticketSet.ticket
+            },
+            $push: {
+                messages: message
+            },
+            $unset: {
+                [`players.${victim.id}`]: ""
+            }
+        },
+        ...await handleCasesWhenPlayerLeave(socketPkg, victim.id, room as ServerRoom)
+    ]
 
     // delete valid_date
     var clientTicket = { id: ticketSet.id, victim_id: ticketSet.ticket.victim_id }
 
     io.to(victim.socket_id).emit('player_got_kicked', { ticket: clientTicket });
 
-    io.to(socketPkg.roomId).except(victim.socket_id).emit('player_got_kicked', {
+    io.to(roomId).except(victim.socket_id).emit('player_got_kicked', {
         new_code: newCode,
         message,
         ticket: clientTicket

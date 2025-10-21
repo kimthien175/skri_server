@@ -1,19 +1,17 @@
-import { ObjectId } from "mongodb";
+import { Collection, Filter, ObjectId, UpdateFilter } from "mongodb";
 import { Player } from "../types/player.js";
 import { getRunningState, PublicRoom, StateStatus } from "../types/room.js";
-import { SocketPackage } from "../types/socket_package.js";
-import { RoomRequestPackage } from "../types/type.js";
+import { getNewRoomCode, SocketPackage } from "../types/socket_package.js";
+import { Mutable, RoomRequestPackage, RoomResponse } from "../types/type.js";
 
 import { getLastestSpecs, Mongo } from "../utils/db/mongo.js";
 import { Random } from "../utils/random/random.js";
 import { PlayerJoinMessage } from "../types/message.js";
 import { GameState, PickWordState, PublicLobbyState } from "../private/state/state.js";
-import { io } from "../socket_io.js";
 
-type JoinPublicRoomCallback = (arg: { success: true, player: Player, room: PublicRoom }
-    | { success: false, reason: any }) => void
+type JoinPublicRoomCallback = (arg: RoomResponse<PublicRoom>) => void
 
-export async function registerJoinPublicMatch(socketPkg: SocketPackage) {
+export async function registerJoinPublicMatch(socketPkg: SocketPackage<PublicRoom>) {
     socketPkg.socket.on('join_public_match',
         async function (requestPkg: RoomRequestPackage,
             callback: JoinPublicRoomCallback) {
@@ -33,24 +31,31 @@ export async function registerJoinPublicMatch(socketPkg: SocketPackage) {
 
                 //#region MODIFY SOCKETPACKAGE EXCEPT ROOMID
                 socketPkg.name = player.name
-                socketPkg.isPublicRoom = true
                 socketPkg.playerId = player.id
+                socketPkg.roomType = 'public'
                 //#endregion
 
                 const message = new PlayerJoinMessage(player.id, player.name)
 
                 await _joinPublicRoom(socketPkg, callback, player, message)
-                    .catch((e) => {
-                        if ((e as NotRoomFoundError).message != NotRoomFoundError.reason) throw e
-                        return _joinLobbyRoom(socketPkg, callback, player, message)
-                    })
-                    .catch((e) => {
-                        if ((e as NotRoomFoundError).message != NotRoomFoundError.reason) throw e
-                        return _initLobbyRoom(socketPkg, callback, player)
+                    .catch(async (e) => {
+
+                        console.log(`[JOIN PUBLIC ROOM]`)
+                        if (!(e instanceof NotRoomFoundError)) {
+                            console.log(`[ERROR]: ${e}`)
+                            throw e
+                        }
+
+                        console.log(`[FAILED]: SKIP TO INIT LOBBY ROOM`);
+                        await _initLobbyRoom(socketPkg, callback, player)
+                            .catch((e) => {
+                                console.log(`[INIT LOBBY ROOM]:ERROR ${e}`);
+                                throw e
+                            })
                     })
 
             } catch (e) {
-                console.log(`[JOIN PUBLIC ROOM REQUEST]: ${e}`);
+                console.log(`[JOIN PUBLIC ROOM REQUEST] ERROR`);
                 callback({
                     success: false,
                     reason: e
@@ -60,45 +65,70 @@ export async function registerJoinPublicMatch(socketPkg: SocketPackage) {
 }
 
 /// modify socketPkg.roomid
-async function _joinPublicRoom(socketPkg: SocketPackage, callback: JoinPublicRoomCallback, player: Player, message: PlayerJoinMessage) {
-    const room = await Mongo.publicRooms.findOneAndUpdate({ is_available: true },
-        [
-            {
-                $set: {
-                    [`players.${player.id}`]: player,
-                    messages: { $concatArrays: ["$messages", [message]] }
-                }
-            },
-            {
-                $set: {
-                    is_available: {
-                        $lt: [
-                            { $size: { $objectToArray: "$players" } },
-                            8
-                        ]
-                    }
-                }
-            }
-        ],
-        { returnDocument: 'after' }
-    )
+async function _joinPublicRoom(socketPkg: SocketPackage<PublicRoom>, callback: JoinPublicRoomCallback, player: Player, message: PlayerJoinMessage) {
+    var room = await socketPkg.room.findOne({ is_available: true })
+    if (room == null) throw new NotRoomFoundError()
 
-    if (room == null) {
-        console.log('[JOIN PUBLIC ROOM]: ');
-        throw new NotRoomFoundError();
-    }
-
+    const roomId = room._id.toString()
     // modify socket pkg room id
-    socketPkg.roomId = room._id.toString()
+    await socketPkg.setRoomId(roomId)
 
-    // join
-    await socketPkg.socket.join(socketPkg.roomId)
 
-    // notify other players
-    socketPkg.socket.to(socketPkg.roomId).emit('player_join', {
-        message,
-        player
-    })
+    var updateFilter: Mutable<UpdateFilter<PublicRoom>>[] = [
+        {
+            $set: { [`players.${player.id}`]: player },
+            $push: { messages: message }
+        }]
+
+    const runningState = getRunningState(room) as PublicLobbyState
+    const totalPlayers = Object.keys(room.players).length
+    if (totalPlayers == 1 || runningState.type == PublicLobbyState.TYPE) {
+        //#region START GAME
+        if (runningState.type != PublicLobbyState.TYPE || totalPlayers != 1) throw Error('wrong state')
+
+        var pickWordPkg = await PickWordState.from(room)
+        var startGamePkg = GameState.switchState(room, pickWordPkg.state)
+
+
+        updateFilter.push(startGamePkg)
+        updateFilter.push(pickWordPkg.update)
+        //#endregion
+
+        //#region THE SAME IN BOTH BLOCK
+        // join
+        await socketPkg.socket.join(roomId)
+
+        room = await socketPkg.room.findOneAndUpdate({ _id: room._id }, updateFilter, { returnDocument: 'after' })
+        if (room == null) throw new NotRoomFoundError()
+
+        // notify other players
+        socketPkg.socket.to(roomId).emit('player_join', {
+            message,
+            player
+        })
+        //#endregion
+
+        //EXCEPT THIS
+        socketPkg.emitNewStates({ except: socketPkg.socket.id }, startGamePkg.$set.status, pickWordPkg.state)
+    } else if (totalPlayers >= 7) {
+        updateFilter.push({
+            is_available: false
+        })
+
+        //#region THE SAME IN BOTH BLOCK
+        // join
+        await socketPkg.socket.join(roomId)
+
+        room = await socketPkg.room.findOneAndUpdate({ _id: room._id }, updateFilter, { returnDocument: 'after' })
+        if (room == null) throw new NotRoomFoundError()
+
+        // notify other players
+        socketPkg.socket.to(roomId).emit('player_join', {
+            message,
+            player
+        })
+        //#endregion
+    }
 
     callback({
         success: true,
@@ -108,93 +138,7 @@ async function _joinPublicRoom(socketPkg: SocketPackage, callback: JoinPublicRoo
 }
 
 /// modify socketPkg.roomid
-async function _joinLobbyRoom(socketPkg: SocketPackage, callback: JoinPublicRoomCallback, player: Player, message: PlayerJoinMessage) {
-    var pkg = await Mongo.doSession<{ state: PickWordState, room: PublicRoom }>(async function (session) {
-        var room = await Mongo.publicLobby.findOneAndDelete(
-            {
-                // leave empty so just find a room, 
-                // if you want to add condition or sort to find the last room added
-                //  just add or modify the callback
-            },
-            { session }
-        )
-        if (room == null) throw new NotRoomFoundError()
-
-        //#region UPDATE ROOM
-        room.messages.push(message)
-        room.players[player.id] = player
-
-        var waitingState = getRunningState(room)
-        if (waitingState.type != PublicLobbyState.TYPE) throw Error('[JOIN LOBBY ROOM]: wrong game state')
-        waitingState.end_date = new Date()
-
-        //#region new state
-        const idList = Object.keys(room.players)
-        if (idList.length <= 1) throw Error('[JOIN LOBBY ROOM]: not enough player to start game')
-        const pickerId = idList[Math.floor(Math.random() * idList.length)]
-
-        const state = new PickWordState({
-            player_id: pickerId,
-            words: await Random.getWords(room.settings),
-            round_notify: 1
-        })
-        //#endregion
-
-        room.status = {
-            current_state_id: waitingState.id,
-            command: 'end',
-            date: waitingState.end_date,
-            next_state_id: state.id
-        }
-        room.henceforth_states[state.id] = state
-        room.current_round_done_players = { [pickerId]: true }
-        //#endregion
-
-        // MOVE TO PUBLIC ROOM
-        var insertResult = await Mongo.publicRooms.insertOne(room, { session })
-        if (!insertResult.acknowledged) throw Error('[JOIN LOBBY ROOM]: insert failed')
-
-        // MODIFY SOCKET PACKAGE ROOM ID
-        socketPkg.roomId = insertResult.insertedId.toString()
-
-        return { state, room }
-    })
-
-    await socketPkg.socket.join(socketPkg.roomId)
-
-    // NOTIFY OTHER PLAYERS
-    io.to(socketPkg.roomId).emit('player_join', { message, player })
-
-    //#region START GAME
-    if (pkg.state.player_id == socketPkg.playerId) {
-        callback({
-            success: true,
-            player,
-            room: pkg.room
-        })
-
-        PickWordState.removeSensitiveProperties(pkg.state)
-        socketPkg.emitNewStates({ except: pkg.state.player_id }, pkg.room.status, pkg.state)
-
-    } else {
-        socketPkg.emitNewStates({ only: pkg.state.player_id }, pkg.room.status, pkg.state)
-
-        // the room is supposed to have 2 players, but this code carry the case which have greater than 2 players 
-        //socketPkg.emitNewStates({except: [socketPkg.playerId as string, pkg.state.player_id]}, pkg.room.status, pkg.state)
-
-        PickWordState.removeSensitiveProperties(pkg.state)
-        callback({
-            success: true,
-            player,
-            room: pkg.room
-        })
-    }
-    //#endregion
-}
-
-
-/// modify socketPkg.roomid
-async function _initLobbyRoom(socketPkg: SocketPackage, callback: JoinPublicRoomCallback, player: Player) {
+async function _initLobbyRoom(socketPkg: SocketPackage<PublicRoom>, callback: JoinPublicRoomCallback, player: Player) {
     const state: GameState = new PublicLobbyState()
     const status: StateStatus = {
         current_state_id: state.id,
@@ -202,6 +146,7 @@ async function _initLobbyRoom(socketPkg: SocketPackage, callback: JoinPublicRoom
         date: new Date()
     }
     const room: PublicRoom = {
+        code: await getNewRoomCode('public'),
         is_available: true,
         players: { [player.id]: player },
         ...(await getLastestSpecs(true)),
@@ -220,15 +165,18 @@ async function _initLobbyRoom(socketPkg: SocketPackage, callback: JoinPublicRoom
         current_round: 1
     }
 
-    var insertResult = await Mongo.publicLobby.insertOne(room)
+    var insertResult = await socketPkg.room.insertOne(room)
     if (!insertResult.acknowledged) throw Error('[INIT LOBBY ROOM]: insert room failed')
 
+    const roomId = insertResult.insertedId.toString()
+
     // modify socket room
-    socketPkg.roomId = insertResult.insertedId.toString()
+    await socketPkg.setRoomId(roomId)
 
     // join this room
-    await socketPkg.socket.join(socketPkg.roomId)
+    await socketPkg.socket.join(roomId)
 
+    console.log(`[INIT LOBBY ROOM]: ${room}`);
     // resolve request
     callback({
         success: true,
@@ -238,8 +186,95 @@ async function _initLobbyRoom(socketPkg: SocketPackage, callback: JoinPublicRoom
 }
 
 class NotRoomFoundError extends Error {
-    constructor(){
-        super(NotRoomFoundError.reason)
-    }
-    static reason = 'room not found'
+    constructor() { super('room not found') }
 }
+
+
+
+
+// /// modify socketPkg.roomid
+// async function _joinLobbyRoom(socketPkg: SocketPackage<PublicRoom>, callback: JoinPublicRoomCallback, player: Player, message: PlayerJoinMessage) {
+//     var pkg = await Mongo.doSession<{ state: PickWordState, room: PublicRoom }>(async function (session) {
+//         var room = await socketPkg.room.findOne(
+//             {
+//                 // leave empty so just find a room, 
+//                 // if you want to add condition or sort to find the last room added
+//                 //  just add or modify the callback
+//             },
+//             { session }
+//         )
+//         if (room == null) throw new NotRoomFoundError()
+
+//         //#region UPDATE ROOM
+//         room.messages.push(message)
+//         room.players[player.id] = player
+
+//         var waitingState = getRunningState(room)
+//         if (waitingState.type != PublicLobbyState.TYPE) throw Error('wrong game state')
+//         waitingState.end_date = new Date()
+
+//         //#region new state
+//         const idList = Object.keys(room.players)
+//         if (idList.length <= 1) throw Error('not enough player to start game')
+//         const pickerId = idList[Math.floor(Math.random() * idList.length)]
+
+//         const state = new PickWordState({
+//             player_id: pickerId,
+//             words: await Random.getWords(room.settings),
+//             round_notify: 1
+//         })
+//         //#endregion
+
+//         room.status = {
+//             current_state_id: waitingState.id,
+//             command: 'end',
+//             date: waitingState.end_date,
+//             next_state_id: state.id
+//         }
+//         room.henceforth_states[state.id] = state
+//         room.current_round_done_players = { [pickerId]: true }
+//         //#endregion
+
+//         // MOVE TO PUBLIC ROOM
+//         var insertResult = await socketPkg.room.insertOne(room, { session })
+//         if (!insertResult.acknowledged) throw Error('insert failed')
+
+//         // MODIFY SOCKET PACKAGE ROOM ID
+//         socketPkg.roomId = insertResult.insertedId.toString()
+
+//         return { state, room }
+//     })
+
+//     await socketPkg.socket.join(socketPkg.roomId)
+
+//     // NOTIFY OTHER PLAYERS
+//     socketPkg.socket.to(socketPkg.roomId).emit('player_join', { message, player })
+
+//     console.log(`[JOIN LOBBY ROOM] ${JSON.stringify(pkg.room)}`);
+
+//     //#region START GAME
+//     if (pkg.state.player_id == socketPkg.playerId) {
+//         callback({
+//             success: true,
+//             player,
+//             room: pkg.room
+//         })
+
+//         PickWordState.removeSensitiveProperties(pkg.state)
+//         socketPkg.emitNewStates({ except: pkg.state.player_id }, pkg.room.status, pkg.state)
+
+//     } else {
+//         socketPkg.emitNewStates({ only: pkg.state.player_id }, pkg.room.status, pkg.state)
+
+//         // the room is supposed to have 2 players, but this code carry the case which have greater than 2 players 
+//         //socketPkg.emitNewStates({except: [socketPkg.playerId as string, pkg.state.player_id]}, pkg.room.status, pkg.state)
+
+//         PickWordState.removeSensitiveProperties(pkg.state)
+//         callback({
+//             success: true,
+//             player,
+//             room: pkg.room
+//         })
+//     }
+//     //#endregion
+// }

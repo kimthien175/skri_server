@@ -1,6 +1,6 @@
-import { Collection, Db, FindOptions, MongoClient, OptionalId, ServerApiVersion, WithId, WithTransactionCallback } from "mongodb"
+import { Collection, Db, FindOptions, MongoClient, ServerApiVersion, WithTransactionCallback } from "mongodb"
 import { Specs } from "../../types/type";
-import { PrivateRoom, PublicRoom } from "../../types/room";
+import { PublicRoom } from "../../types/room";
 import { NormalEnglishWordDoc, NormalVietWordDoc, WordDoc, } from "../random/type";
 import { ReportItem } from "../../types/report_item";
 

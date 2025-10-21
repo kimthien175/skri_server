@@ -1,18 +1,18 @@
 import { SocketPackage } from "../types/socket_package.js";
 import { Message, PlayerChatMessage, PlayerGuessRightMessage } from "../types/message.js";
 import { Filter, ObjectId, UpdateFilter } from "mongodb";
-import { getRunningState, ServerRoom, StateStatus } from "../types/room.js";
+import { getRunningState, ServerRoom } from "../types/room.js";
 import { DrawState, PlayersPointData } from "../private/state/state.js";
 import { io } from "../socket_io.js";
 import { endDrawState } from "./end_draw_state.js";
-import { Mutable } from "../types/type.js";
 
 export function registerListenGuessMessages(socketPkg: SocketPackage) {
     socketPkg.socket.on('player_guess', async function (guess: string, callback) {
         try {
             // verify player guess, send system message if player guess close or right
             // end state if all player guess rights
-            var _id: Filter<ServerRoom> = { _id: new ObjectId(socketPkg.roomId) }
+            const roomId = await socketPkg.getRoomId()
+            var _id: Filter<ServerRoom> = { _id: new ObjectId(roomId) }
             var room = await socketPkg.room.findOne(_id)
             if (room == null) throw Error('room not found')
 
@@ -29,9 +29,9 @@ export function registerListenGuessMessages(socketPkg: SocketPackage) {
 
                 state.points[socketPkg.playerId as string] = point
 
-                var updatePkg: UpdateFilter<ServerRoom>  =
+                var updatePkg: UpdateFilter<ServerRoom> =
                     DrawState.isEndState(state, room.players) ?
-                        await endDrawState(socketPkg, room, state) :
+                        await endDrawState(socketPkg, room) :
                         { $set: {} }
 
                 var playerScore = room.players[socketPkg.playerId as string].score
@@ -51,7 +51,7 @@ export function registerListenGuessMessages(socketPkg: SocketPackage) {
 
                 await socketPkg.room.updateOne(_id, updatePkg)
                 callback(guessResult)
-                io.to(socketPkg.roomId).emit('guess_right', msg)
+                io.to(roomId).emit('guess_right', msg)
                 return
             }
 
@@ -60,7 +60,7 @@ export function registerListenGuessMessages(socketPkg: SocketPackage) {
 
             await socketPkg.room.updateOne(_id, { $push: { messages: msg } })
             callback(guessResult)
-            socketPkg.socket.to(socketPkg.roomId).emit('player_chat', msg)
+            socketPkg.socket.to(roomId).emit('player_chat', msg)
             //#endregion
         } catch (e) {
             console.log(`[PLAYER_GUESS]: ${e}`);

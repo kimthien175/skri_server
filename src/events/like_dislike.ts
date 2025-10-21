@@ -12,7 +12,8 @@ export async function registerLikeDislike(socketPkg: SocketPackage) {
             if (flag != true && flag != false)
                 throw Error('wrong type')
 
-            var _id = { _id: new ObjectId(socketPkg.roomId) }
+            const roomId = await socketPkg.getRoomId()
+            var _id = { _id: new ObjectId(roomId) }
             var room = await socketPkg.room.findOne(_id)
             if (room == null) throw Error('room not found')
 
@@ -40,7 +41,7 @@ export async function registerLikeDislike(socketPkg: SocketPackage) {
 
             var result = await socketPkg.room.updateOne(_id, updatePkg)
             if (result.modifiedCount != 1) throw Error('update failed')
-            io.to(socketPkg.roomId).emit('like_dislike', msg)
+            io.to(roomId).emit('like_dislike', msg)
         } catch (e) {
             console.log(`[SYSTEM MESSAGE] ${e}`);
         }
