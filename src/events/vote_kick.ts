@@ -5,11 +5,12 @@ import { PlayerVotekickMessage } from "../types/message.js";
 import { kick } from "./kick.js";
 import { io } from "../socket_io.js";
 import { ServerRoom } from "../types/room";
+import { Redis } from "../utils/redis.js";
 
 export const registerVoteKick = (socketPkg: SocketPackage) =>
     socketPkg.socket.on('vote_kick', async function (victimId: string, callback: (arg: VotekickResponse) => void) {
         try {
-            const roomId = await socketPkg.getRoomId()
+            const roomId = await Redis.getRoomId(socketPkg.socket.id)
             const filter: Filter<ServerRoom> = await socketPkg.getFilter({
                 [`players.${socketPkg.playerId}`]: { $exists: true },
                 [`players.${victimId}`]: { $exists: true }
@@ -23,7 +24,7 @@ export const registerVoteKick = (socketPkg: SocketPackage) =>
             if (victim.votekick == undefined) {
                 victim.votekick = {
                     voter_id_list: [],
-                    min_vote: Math.floor((Object.keys(room.players).length - 1) / 2) + 1
+                    min_vote: Math.max(Math.floor((Object.keys(room.players).length - 1) / 2) + 1, 2)
                 }
             }
 

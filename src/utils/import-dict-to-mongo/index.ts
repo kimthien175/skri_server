@@ -53,7 +53,7 @@ async function importFile(filePath: string) {
 
 async function main() {
 
-    await Mongo.connect()
+    //await Mongo.connect()
 
     var alphabet: string
 

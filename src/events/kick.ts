@@ -6,6 +6,7 @@ import { io } from "../socket_io.js";
 import { ServerTicket } from "../types/ticket.js";
 import { Player } from "../types/player.js";
 import { handleCasesWhenPlayerLeave } from "../private/disconnect.js";
+import { Redis } from "../utils/redis.js";
 
 export const registerKick = async function (socketPkg: SocketPackage) {
     socketPkg.socket.on('host_kick', async function (victimId: string, callback: (res: {
@@ -37,7 +38,7 @@ export const registerKick = async function (socketPkg: SocketPackage) {
 /** emit to clients, not save to db, return update filter for other tasks
  *  */
 export async function kick(victim: Player, socketPkg: SocketPackage, room: WithId<ServerRoom>): Promise<UpdateFilter<ServerRoom>> {
-    const roomId = await socketPkg.getRoomId()
+    const roomId = await Redis.getRoomId(socketPkg.socket.id)
     const message = new PlayerGotKickedMessage(victim.name)
     const newCode = await getNewRoomCode(socketPkg.roomType)
     // create new ticket or check for existing ticket

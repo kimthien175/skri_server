@@ -4,7 +4,7 @@ import { randomCompoundVietnameseWords, randomPopularVietnameseWords, randomViet
 import { Random } from "./utils/random/random.js";
 
 async function test(){
-    await Mongo.connect()
+    //await Mongo.connect()
     console.log(await Random.getWords({
         use_custom_words_only: false,
         word_count: 4,

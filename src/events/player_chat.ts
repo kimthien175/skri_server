@@ -1,16 +1,13 @@
 import { SocketPackage } from "../types/socket_package.js";
-
-
-import { Mongo } from "../utils/db/mongo.js";
 import { PlayerChatMessage } from "../types/message.js";
 import { ObjectId } from "mongodb";
+import { Redis } from "../utils/redis.js";
 
 export function registerListenChatMessages(socketPkg: SocketPackage) {
     socketPkg.socket.on('player_chat', async function (chat: string) {
-        await Mongo.connect()
         try {
             var msg = new PlayerChatMessage(socketPkg.playerId as string, socketPkg.name, chat)
-            const roomId = await socketPkg.getRoomId()
+            const roomId = await Redis.getRoomId(socketPkg.socket.id)
 
             await socketPkg.room.updateOne(
                 {

@@ -5,6 +5,7 @@ import { RoomSettings } from "../../types/type.js";
 import { PickWordState, PrivatePreGameState } from "../state/state.js";
 import { getRunningState, PrivateRoom, ServerRoom } from "../../types/room.js";
 import { io } from "../../socket_io.js";
+import { Redis } from "../../utils/redis.js";
 
 const WordsOptions = 3;
 
@@ -13,7 +14,7 @@ export function registerStartPrivateGame(socketPkg: SocketPackage<PrivateRoom>) 
         try {
             //#region PREPARE ROOM
             var roomCol = socketPkg.room
-            const roomId = await socketPkg.getRoomId()
+            const roomId = await Redis.getRoomId(socketPkg.socket.id)
             const filter: Filter<ServerRoom> = await socketPkg.getFilter({ host_player_id: socketPkg.playerId })
             var room = await roomCol.findOne(filter)
             //#endregion

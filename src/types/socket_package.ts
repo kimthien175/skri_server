@@ -1,4 +1,4 @@
-import { BroadcastOperator, Server, Socket } from 'socket.io';
+import { BroadcastOperator, Socket } from 'socket.io';
 import { DecorateAcknowledgementsWithMultipleResponses, DefaultEventsMap } from 'socket.io/dist/typed-events';
 import { Mongo } from '../utils/db/mongo.js';
 import { PrivateRoom, PublicRoom, ServerRoom, StateStatus } from './room.js';
@@ -7,7 +7,7 @@ import { GameState } from '../private/state/state.js';
 import { Player } from './player.js';
 import cryptoRandomString from "crypto-random-string";
 import { io } from '../socket_io.js';
-import { redisClient } from '../utils/redis.js';
+import { Redis } from '../utils/redis.js';
 
 type _PUBLIC = 'public'
 type _PRIVATE = 'private'
@@ -19,16 +19,6 @@ type _MappingRoomType<T> = T extends PrivateRoom ? _PRIVATE : T extends PublicRo
 export class SocketPackage<T extends ServerRoom = ServerRoom> {
     constructor(
         public socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) { }
-
-
-    async getRoomId() {
-        const roomId = await redisClient.hGet(this.socket.id, 'room_id')
-        if (roomId == null) throw Error('NULL ROOM ID')
-        return roomId
-    }
-    async setRoomId(roomId: string) {
-        return redisClient.hSet(this.socket.id, 'room_id', roomId)
-    }
 
     _name?: string
     get name(): string { return this._name as string }
@@ -43,16 +33,16 @@ export class SocketPackage<T extends ServerRoom = ServerRoom> {
     }
 
     get room(): Collection<T> {
-        return Mongo._db.collection(this.roomType)
+        return (this.roomType == 'public' ? Mongo.publicRooms : Mongo.privateRooms) as unknown as Collection<T>
     }
 
     async getFilter(addOn?: UpdateFilter<ServerRoom>): Promise<UpdateFilter<ServerRoom>> {
-        var roomId = await this.getRoomId()
+        var roomId = await Redis.getRoomId(this.socket.id)
         return { _id: new ObjectId(roomId), ...addOn }
     }
 
     get endedRoom(): Collection<ServerRoom> {
-        return Mongo._db.collection(`ended_${this.roomType}`)
+        return (this.roomType == 'public' ? Mongo.endedPublicRooms : Mongo.endedPrivateRooms) as unknown as Collection<ServerRoom>
     }
 
     // _isOwner?: boolean
@@ -64,7 +54,7 @@ export class SocketPackage<T extends ServerRoom = ServerRoom> {
     async emitNewStates(to: { wholeRoom: true } | { except: Player['id'] } | { only: Player['id'] }, status: StateStatus, state: GameState) {
         var sender: BroadcastOperator<DecorateAcknowledgementsWithMultipleResponses<DefaultEventsMap>, any>
 
-        var roomId = await this.getRoomId()
+        var roomId = await Redis.getRoomId(this.socket.id)
 
         if ((to as any).wholeRoom != undefined) {
             sender = io.to(roomId)

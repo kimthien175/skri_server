@@ -4,6 +4,7 @@ import { DrawState, PickWordState } from "../private/state/state.js";
 import { getRunningState, ServerRoom, StateStatus } from "../types/room.js";
 import { io } from "../socket_io.js";
 import { Mutable } from "../types/type";
+import { Redis } from "../utils/redis.js";
 
 export function registerPickWord(socketPkg: SocketPackage) {
     socketPkg.socket.on('pick_word', async (word: string, callback: (res: { success: true } | { success: false, reason: any }) => void) => {
@@ -12,7 +13,7 @@ export function registerPickWord(socketPkg: SocketPackage) {
         // emit to players
         console.log(`[PICK WORD] received word: ${word}`);
         try {
-            const roomId = await socketPkg.getRoomId()
+            const roomId = await Redis.getRoomId(socketPkg.socket.id)
             const filter: Filter<ServerRoom> = { _id: new ObjectId(roomId) }
 
             var room = await socketPkg.room.findOne(filter)

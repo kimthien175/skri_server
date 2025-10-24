@@ -5,7 +5,7 @@ import { app } from "./utils/api.js";
 import { SocketPackage } from "./types/socket_package.js";
 
 import { registerInitPrivateRoom } from "./private/init/init.js";
-import { onLeavingRoom } from "./private/disconnect.js";
+import { registerOnDisconnect } from "./private/disconnect.js";
 import { registerJoinPrivateRoom } from "./private/join/join.js";
 import { registerListenChatMessages } from "./events/player_chat.js";
 import { registerChangeSettings } from "./events/host_change_settings.js";
@@ -37,13 +37,7 @@ const io = new Server(httpServer, {
 io.on("connection", async (socket) => {
   const socketPackage: SocketPackage = new SocketPackage(socket)
 
-  console.log("SOCKET.IO: CONNECTED");
-  socket.on("disconnect", async () => {
-    console.log(`player with socket ID ${socket.id} disconnected`);
-    console.log(`SocketIO.disconnect: roomId: ${await socketPackage.getRoomId()}`);
-
-    onLeavingRoom(socketPackage);
-  });
+  registerOnDisconnect(socketPackage)
 
   //#region PRIVATE ROOM
   var privateSocketPackage = socketPackage as unknown as SocketPackage<PrivateRoom>

@@ -9,7 +9,7 @@ async function add() {
     const html = readFileSync('./compound.html', 'utf8')
     const $ = cheerio.load(html)
 
-    await Mongo.connect()
+   // await Mongo.connect()
 
     //var words: NormalEnglishWordDoc[] = []
     const bulkOps: AnyBulkWriteOperation<NormalEnglishWordDoc>[] = []

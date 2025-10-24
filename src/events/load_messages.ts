@@ -1,12 +1,13 @@
 import { ObjectId } from "mongodb";
 import { SocketPackage } from "../types/socket_package.js";
 import { messagesPageQuantity, ServerRoom } from "../types/room.js";
+import { Redis } from "../utils/redis.js";
 
 export async function registerLoadingMessages(socketPkg: SocketPackage) {
     socketPkg.socket.on('load_messages', async function (id: string, callback) {
         try {
             const msgId = new ObjectId(id)
-            const roomId = await socketPkg.getRoomId()
+            const roomId = await Redis.getRoomId(socketPkg.socket.id)
 
             const pipeline = [
                 {

@@ -5,6 +5,7 @@ import { ServerRoom, StateStatus } from "../types/room.js";
 import { DrawState } from "../private/state/state.js";
 import { io } from "../socket_io.js";
 import { Mutable } from "../types/type.js";
+import { Redis } from "../utils/redis.js";
 
 export async function registerLikeDislike(socketPkg: SocketPackage) {
     socketPkg.socket.on('like_dislike', async function (flag: boolean) {
@@ -12,7 +13,7 @@ export async function registerLikeDislike(socketPkg: SocketPackage) {
             if (flag != true && flag != false)
                 throw Error('wrong type')
 
-            const roomId = await socketPkg.getRoomId()
+            const roomId = await Redis.getRoomId(socketPkg.socket.id)
             var _id = { _id: new ObjectId(roomId) }
             var room = await socketPkg.room.findOne(_id)
             if (room == null) throw Error('room not found')

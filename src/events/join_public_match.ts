@@ -1,6 +1,6 @@
 import { Collection, Filter, ObjectId, UpdateFilter } from "mongodb";
 import { Player } from "../types/player.js";
-import { getRunningState, PublicRoom, StateStatus } from "../types/room.js";
+import { deleteRoomSensitiveInformation, getRunningState, PublicRoom, RoomProjection, StateStatus } from "../types/room.js";
 import { getNewRoomCode, SocketPackage } from "../types/socket_package.js";
 import { Mutable, RoomRequestPackage, RoomResponse } from "../types/type.js";
 
@@ -8,6 +8,7 @@ import { getLastestSpecs, Mongo } from "../utils/db/mongo.js";
 import { Random } from "../utils/random/random.js";
 import { PlayerJoinMessage } from "../types/message.js";
 import { GameState, PickWordState, PublicLobbyState } from "../private/state/state.js";
+import { Redis } from "../utils/redis.js";
 
 type JoinPublicRoomCallback = (arg: RoomResponse<PublicRoom>) => void
 
@@ -16,7 +17,7 @@ export async function registerJoinPublicMatch(socketPkg: SocketPackage<PublicRoo
         async function (requestPkg: RoomRequestPackage,
             callback: JoinPublicRoomCallback) {
             try {
-                await Mongo.connect()
+                //await Mongo.connect()
                 const socket = socketPkg.socket
                 const player = requestPkg.player
 
@@ -66,12 +67,12 @@ export async function registerJoinPublicMatch(socketPkg: SocketPackage<PublicRoo
 
 /// modify socketPkg.roomid
 async function _joinPublicRoom(socketPkg: SocketPackage<PublicRoom>, callback: JoinPublicRoomCallback, player: Player, message: PlayerJoinMessage) {
-    var room = await socketPkg.room.findOne({ is_available: true })
+    var room = await socketPkg.room.findOne({ is_available: true },  {projection: RoomProjection})
     if (room == null) throw new NotRoomFoundError()
 
     const roomId = room._id.toString()
     // modify socket pkg room id
-    await socketPkg.setRoomId(roomId)
+    await Redis.setRoomId(socketPkg.socket.id, roomId)
 
 
     var updateFilter: Mutable<UpdateFilter<PublicRoom>>[] = [
@@ -130,6 +131,7 @@ async function _joinPublicRoom(socketPkg: SocketPackage<PublicRoom>, callback: J
         //#endregion
     }
 
+    deleteRoomSensitiveInformation(room)
     callback({
         success: true,
         player,
@@ -171,7 +173,7 @@ async function _initLobbyRoom(socketPkg: SocketPackage<PublicRoom>, callback: Jo
     const roomId = insertResult.insertedId.toString()
 
     // modify socket room
-    await socketPkg.setRoomId(roomId)
+    await Redis.setRoomId(socketPkg.socket.id, roomId)
 
     // join this room
     await socketPkg.socket.join(roomId)

@@ -5,11 +5,12 @@ import { DrawState } from "../private/state/state.js";
 import { ServerRoom } from "../types/room.js";
 import { io } from "../socket_io.js";
 import { PlayerStartDrawingMessage } from "../types/message.js";
+import { Redis } from "../utils/redis.js";
 
 export function registerPlayerDraw(socketPkg: SocketPackage) {
     socketPkg.socket.on('draw:send_past', async (drawStep: DrawStep) => {
         try {
-            const roomId = await socketPkg.getRoomId()
+            const roomId = await Redis.getRoomId(socketPkg.socket.id)
             const filter = await socketPkg.getFilter()
             var room = await socketPkg.room.findOne(filter)
 
@@ -50,7 +51,7 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
     socketPkg.socket.on('draw:remove_past', async (targetId: number) => {
         try {
-            const roomId = await socketPkg.getRoomId()
+            const roomId = await Redis.getRoomId(socketPkg.socket.id)
             const filter = await socketPkg.getFilter()
             var room = await socketPkg.room.findOne(filter)
 
@@ -94,8 +95,8 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
     socketPkg.socket.on('draw:start_current', async (drawStep: DrawStep) => {
         try {
-            const roomId = await socketPkg.getRoomId()
-            const filter = socketPkg.getRoomId()
+            const roomId = await Redis.getRoomId(socketPkg.socket.id)
+            const filter = socketPkg.getFilter()
             var room = await socketPkg.room.findOne(filter)
 
             if (room == null) throw Error('room not found')
@@ -127,7 +128,7 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
     socketPkg.socket.on('draw:update_current', async (drawStepAddon) => {
         try {
-            const roomId = await socketPkg.getRoomId()
+            const roomId = await Redis.getRoomId(socketPkg.socket.id)
             const filter = await socketPkg.getFilter()
             var room = await socketPkg.room.findOne(filter)
 
@@ -148,7 +149,7 @@ export function registerPlayerDraw(socketPkg: SocketPackage) {
 
     socketPkg.socket.on('draw:end_current', async (data) => {
         try {
-            socketPkg.socket.to(await socketPkg.getRoomId()).emit('draw:end_current', data)
+            socketPkg.socket.to(await Redis.getRoomId(socketPkg.socket.id)).emit('draw:end_current', data)
 
         } catch (e) {
             console.log(`[DRAW:END_CURRENT] ${e}`);

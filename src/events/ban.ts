@@ -3,12 +3,13 @@ import { getNewRoomCode, SocketPackage } from "../types/socket_package.js"
 import { PlayerGotBannedMessage } from "../types/message.js"
 import { PrivateRoom, ServerRoom } from "../types/room.js"
 import { io } from "../socket_io.js"
+import { Redis } from "../utils/redis.js"
 
 export const registerBan = async function (socketPkg: SocketPackage<PrivateRoom>) {
     socketPkg.socket.on('host_ban', async function (victimId: string, callback: (res: { success: true } | { success: false, reason: any }) => void) {
         // verify host
         try {
-            const roomId = await socketPkg.getRoomId()
+            const roomId = await Redis.getRoomId(socketPkg.socket.id)
             const filter: UpdateFilter<PrivateRoom> = await socketPkg.getFilter({
                 host_player_id: socketPkg.playerId,
                 [`players.${victimId}`]: { $exists: true }

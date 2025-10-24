@@ -1,6 +1,6 @@
 import { RoomOptions, RoomSettings, RoomSystem } from "./type";
 import { Message } from "./message";
-import { DrawState, GameState } from "../private/state/state";
+import { DrawState, GameState } from "../private/state/state.js";
 import { ServerTicket } from "./ticket";
 import { Player } from "./player";
 
@@ -85,4 +85,13 @@ export const RoomProjection
   system: 1,
   current_round: 1,
   latest_draw_data: 1
+}
+
+export function deleteRoomSensitiveInformation(room:ServerRoom){
+  GameState.removeSensitiveProperties(room.henceforth_states[room.status.current_state_id])
+  if (room.status.command == 'end')
+    GameState.removeSensitiveProperties(room.henceforth_states[room.status.next_state_id])
+  delete (room as any)._id
+
+  if (!room.code.startsWith('p_')) delete room.settings.custom_words
 }

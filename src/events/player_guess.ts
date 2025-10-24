@@ -5,13 +5,14 @@ import { getRunningState, ServerRoom } from "../types/room.js";
 import { DrawState, PlayersPointData } from "../private/state/state.js";
 import { io } from "../socket_io.js";
 import { endDrawState } from "./end_draw_state.js";
+import { Redis } from "../utils/redis.js";
 
 export function registerListenGuessMessages(socketPkg: SocketPackage) {
     socketPkg.socket.on('player_guess', async function (guess: string, callback) {
         try {
             // verify player guess, send system message if player guess close or right
             // end state if all player guess rights
-            const roomId = await socketPkg.getRoomId()
+            const roomId = await Redis.getRoomId(socketPkg.socket.id)
             var _id: Filter<ServerRoom> = { _id: new ObjectId(roomId) }
             var room = await socketPkg.room.findOne(_id)
             if (room == null) throw Error('room not found')

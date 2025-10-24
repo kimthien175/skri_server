@@ -7,6 +7,7 @@ import { PrivateRoom } from "../../types/room.js";
 import { NewHostMessage } from "../../types/message.js";
 import { PrivatePreGameState } from "../state/state.js";
 import { ObjectId } from "mongodb";
+import { Redis } from "../../utils/redis.js";
 
 export function registerInitPrivateRoom(socketPackage: SocketPackage<PrivateRoom>) {
   socketPackage.socket.on("init_private_room",
@@ -14,7 +15,7 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage<PrivateRoom
       const socket = socketPackage.socket;
 
       try {
-        await Mongo.connect();
+        //await Mongo.connect();
         const player = requestPkg.player;
 
         //#region PLAYER
@@ -61,7 +62,7 @@ export function registerInitPrivateRoom(socketPackage: SocketPackage<PrivateRoom
 
         // insert code to room
         var instertResult = await socketPackage.room.insertOne(room);
-        await socketPackage.setRoomId(instertResult.insertedId.toString())
+        await Redis.setRoomId(socketPackage.socket.id, instertResult.insertedId.toString())
 
         // join room
         await socket.join(instertResult.insertedId.toString());

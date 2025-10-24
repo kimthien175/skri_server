@@ -40,7 +40,7 @@ async function add() {
 
 
     }
-    await Mongo.connect()
+    //await Mongo.connect()
     await Mongo.normalVietWords.insertMany(docs)
     console.log('done');
 }

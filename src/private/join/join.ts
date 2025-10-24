@@ -1,12 +1,13 @@
 import { Mongo } from "../../utils/db/mongo.js";
 import { SocketPackage } from "../../types/socket_package.js";
 import { PrivateRoomJoinRequest, PrivateRoomRejoinRequest, RoomResponse } from "../../types/type.js";
-import { PrivateRoom, RoomProjection } from "../../types/room.js";
+import { deleteRoomSensitiveInformation, PrivateRoom, RoomProjection } from "../../types/room.js";
 import { Random } from "../../utils/random/random.js";
 import { Collection, Filter, ObjectId, ReturnDocument, UpdateFilter } from "mongodb";
 import { PlayerJoinMessage } from "../../types/message.js";
 import { GameState } from "../state/state.js";
 import { Player } from "../../types/player.js";
+import { Redis } from "../../utils/redis.js";
 
 /**
  * 
@@ -16,7 +17,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage<PrivateRoom>) {
     socketPkg.socket.on('join_private_room', async function (requestPkg: PrivateRoomJoinRequest | PrivateRoomRejoinRequest, callback: (arg: RoomResponse<PrivateRoom>) => void
     ) {
         try {
-            await Mongo.connect()
+            //await Mongo.connect()
             //#region PLAYER
             const player = requestPkg.player
             player.socket_id = socketPkg.socket.id
@@ -71,22 +72,16 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage<PrivateRoom>) {
 
             // modify socketPkg
             const roomId = room._id.toString()
-            await socketPkg.setRoomId(roomId) 
+            await Redis.setRoomId(socketPkg.socket.id, roomId) 
 
             await socketPkg.socket.join(roomId)
 
             // notify other players
             socketPkg.socket.to(roomId).emit('player_join', { message: updateFilter.$push.messages, player })
 
-            //#region REMOVE SENSITIVE INFORMATION BEFORE SENDING TO CLIENT
-            delete room.settings.custom_words
-            GameState.removeSensitiveProperties(room.henceforth_states[room.status.current_state_id])
-            if (room.status.command == 'end')
-                GameState.removeSensitiveProperties(room.henceforth_states[room.status.next_state_id])
-            delete (room as any)._id
-            //#endregion
-
+            deleteRoomSensitiveInformation(room)
             callback({ success: true, player, room })
+
         } catch (e: any) {
             console.log(`[JOIN PRIVATE ROOM]: ${socketPkg.playerId} ${requestPkg}`)
             console.log(e);

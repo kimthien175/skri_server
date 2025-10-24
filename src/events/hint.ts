@@ -2,12 +2,13 @@ import { Filter, ObjectId } from "mongodb";
 import { SocketPackage } from "../types/socket_package";
 import { DrawState } from "../private/state/state.js";
 import { getRunningState, ServerRoom } from "../types/room.js";
+import { Redis } from "../utils/redis.js";
 
 
 export function registerHint(socketPkg: SocketPackage) {
     socketPkg.socket.on("hint", async function (charIndex: number) {
         try {
-            const roomId = await socketPkg.getRoomId()
+            const roomId = await Redis.getRoomId(socketPkg.socket.id)
             var _id: Filter<ServerRoom> = { _id: new ObjectId(roomId) };
             var room = await socketPkg.room.findOne(_id);
 

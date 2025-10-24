@@ -57,7 +57,7 @@ const notSuitableWords: string[] = [
   
 
 async function filter(){
-    await Mongo.connect()
+  //  await Mongo.connect()
 
     
    console.log( await Mongo.normalEnglishWords.updateMany({word: {$in: notSuitableWords}}, {$set:{isDisabled: true}}))
