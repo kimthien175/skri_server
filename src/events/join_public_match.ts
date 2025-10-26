@@ -1,12 +1,12 @@
 import { Collection, Filter, ObjectId, UpdateFilter } from "mongodb";
 import { Player } from "../types/player.js";
-import { deleteRoomSensitiveInformation, getRunningState, PublicRoom, RoomProjection, StateStatus } from "../types/room.js";
+import { deleteRoomSensitiveInformation, getRunningState, PublicRoom, RoomProjection, ServerRoom, StateStatus } from "../types/room.js";
 import { getNewRoomCode, SocketPackage } from "../types/socket_package.js";
 import { Mutable, RoomRequestPackage, RoomResponse } from "../types/type.js";
 
 import { getLastestSpecs, Mongo } from "../utils/db/mongo.js";
 import { Random } from "../utils/random/random.js";
-import { PlayerJoinMessage } from "../types/message.js";
+import { Message, PlayerJoinMessage } from "../types/message.js";
 import { GameState, PickWordState, PublicLobbyState } from "../private/state/state.js";
 import { Redis } from "../utils/redis.js";
 
@@ -38,6 +38,7 @@ export async function registerJoinPublicMatch(socketPkg: SocketPackage<PublicRoo
 
                 const message = new PlayerJoinMessage(player.id, player.name)
 
+                console.log(player);
                 await _joinPublicRoom(socketPkg, callback, player, message)
                     .catch(async (e) => {
 
@@ -55,11 +56,11 @@ export async function registerJoinPublicMatch(socketPkg: SocketPackage<PublicRoo
                             })
                     })
 
-            } catch (e) {
-                console.log(`[JOIN PUBLIC ROOM REQUEST] ERROR`);
+            } catch (e: any) {
+                console.log(`[JOIN PUBLIC ROOM REQUEST] ${e}`);
                 callback({
                     success: false,
-                    reason: e
+                    reason: e.message
                 })
             }
         })
@@ -67,7 +68,7 @@ export async function registerJoinPublicMatch(socketPkg: SocketPackage<PublicRoo
 
 /// modify socketPkg.roomid
 async function _joinPublicRoom(socketPkg: SocketPackage<PublicRoom>, callback: JoinPublicRoomCallback, player: Player, message: PlayerJoinMessage) {
-    var room = await socketPkg.room.findOne({ is_available: true },  {projection: RoomProjection})
+    var room = await socketPkg.room.findOne({ is_available: true }, { projection: RoomProjection })
     if (room == null) throw new NotRoomFoundError()
 
     const roomId = room._id.toString()
@@ -75,23 +76,27 @@ async function _joinPublicRoom(socketPkg: SocketPackage<PublicRoom>, callback: J
     await Redis.setRoomId(socketPkg.socket.id, roomId)
 
 
-    var updateFilter: Mutable<UpdateFilter<PublicRoom>>[] = [
+    const updateFilter: UpdateFilter<PublicRoom>[] = [
         {
-            $set: { [`players.${player.id}`]: player },
-            $push: { messages: message }
-        }]
+            $set: {
+                [`players.${player.id}`]: player,
+                messages: { $concatArrays: ['$messages', [message as Message]] }
+            }
+        } as unknown as UpdateFilter<PublicRoom>
+    ]
 
     const runningState = getRunningState(room) as PublicLobbyState
     const totalPlayers = Object.keys(room.players).length
     if (totalPlayers == 1 || runningState.type == PublicLobbyState.TYPE) {
+        console.log(`START GAME`);
         //#region START GAME
         if (runningState.type != PublicLobbyState.TYPE || totalPlayers != 1) throw Error('wrong state')
 
-        var pickWordPkg = await PickWordState.from(room)
+        var pickWordPkg = await PickWordState.from(room, { ...room.players, [`${player.id}`]: player })
         var startGamePkg = GameState.switchState(room, pickWordPkg.state)
 
 
-        updateFilter.push(startGamePkg)
+        updateFilter.push(...startGamePkg)
         updateFilter.push(pickWordPkg.update)
         //#endregion
 
@@ -99,7 +104,8 @@ async function _joinPublicRoom(socketPkg: SocketPackage<PublicRoom>, callback: J
         // join
         await socketPkg.socket.join(roomId)
 
-        room = await socketPkg.room.findOneAndUpdate({ _id: room._id }, updateFilter, { returnDocument: 'after' })
+        console.log(updateFilter);
+        room = await socketPkg.room.findOneAndUpdate({ _id: room._id }, updateFilter, { returnDocument: 'after', projection: RoomProjection })
         if (room == null) throw new NotRoomFoundError()
 
         // notify other players
@@ -110,7 +116,15 @@ async function _joinPublicRoom(socketPkg: SocketPackage<PublicRoom>, callback: J
         //#endregion
 
         //EXCEPT THIS
-        socketPkg.emitNewStates({ except: socketPkg.socket.id }, startGamePkg.$set.status, pickWordPkg.state)
+        console.log(`EMIT NEW STATES`);
+        const status = ((startGamePkg[0] as UpdateFilter<ServerRoom>
+        ).$set as NonNullable<UpdateFilter<ServerRoom>['$set']>
+        ).status as StateStatus
+
+        if (pickWordPkg.state.player_id != socketPkg.playerId){
+            PickWordState.removeSensitiveProperties(pickWordPkg.state)
+        }
+        socketPkg.emitNewStates({ except: socketPkg.socket.id }, status, pickWordPkg.state)
     } else if (totalPlayers >= 7) {
         updateFilter.push({
             is_available: false
@@ -120,7 +134,8 @@ async function _joinPublicRoom(socketPkg: SocketPackage<PublicRoom>, callback: J
         // join
         await socketPkg.socket.join(roomId)
 
-        room = await socketPkg.room.findOneAndUpdate({ _id: room._id }, updateFilter, { returnDocument: 'after' })
+        console.log(updateFilter);
+        room = await socketPkg.room.findOneAndUpdate({ _id: room._id }, updateFilter, { returnDocument: 'after', projection: RoomProjection })
         if (room == null) throw new NotRoomFoundError()
 
         // notify other players
@@ -131,7 +146,7 @@ async function _joinPublicRoom(socketPkg: SocketPackage<PublicRoom>, callback: J
         //#endregion
     }
 
-    deleteRoomSensitiveInformation(room)
+    deleteRoomSensitiveInformation(room, socketPkg.playerId as Player['id'])
     callback({
         success: true,
         player,

@@ -29,15 +29,11 @@ export abstract class GameState {
 
     player_id?: Player['id']
 
-    static switchState(room: ServerRoom, nextState: GameState, endGame?: boolean): UpdateFilter<ServerRoom> &
-    {
-        $set: NonNullable<UpdateFilter<ServerRoom>['$set']> &
-        { status: StateStatus & { command: 'end' } }
-    } {
+    static switchState(room: ServerRoom, nextState: GameState, endGame?: boolean): UpdateFilter<ServerRoom>[] {
         var endDate = new Date()
         if (room.status.command == 'start') {
 
-            return {
+            return [{
                 $set: {
                     status: {
                         current_state_id: room.status.current_state_id,
@@ -48,7 +44,7 @@ export abstract class GameState {
                     [`henceforth_states.${room.status.current_state_id}.end_date`]: endDate,
                     [`henceforth_states.${nextState.id}`]: nextState
                 }
-            }
+            }]
         }
 
         var status: StateStatus & { command: 'end' } = {
@@ -58,30 +54,25 @@ export abstract class GameState {
             next_state_id: nextState.id
         }
 
-        var $set: NonNullable<UpdateFilter<ServerRoom>['$set']> & { status: StateStatus & { command: 'end' } } = {
+        var $set: NonNullable<UpdateFilter<ServerRoom>['$set']> = {
             status,
             [`henceforth_states.${room.status.next_state_id}.end_date`]: endDate,
-            [`henceforth_states.${nextState.id}`]: nextState
-        }
+            [`henceforth_states.${nextState.id}`]: nextState,
+            outdated_states: { $concatArrays: ['$outdated_states', [room.henceforth_states[room.status.current_state_id]]] }
+        } as unknown as NonNullable<UpdateFilter<ServerRoom>['$set']>
 
-        var endUpdateFilter: UpdateFilter<ServerRoom> & {
-            $set: NonNullable<UpdateFilter<ServerRoom>['$set']> &
-            { status: StateStatus & { command: 'end' } }
-        }
-            = {
-            $set,
-            $unset: {
-                [`henceforth_states.${room.status.current_state_id}`]: ''
-            },
-            $push: {
-                outdated_states: room.henceforth_states[room.status.current_state_id]
-            }
-        }
+        var endUpdateFilter: UpdateFilter<ServerRoom>[] = [
+            {
+                $set
+            }, {
+                $unset: `henceforth_states.${room.status.current_state_id}`
+            } as unknown as UpdateFilter<ServerRoom>
+        ]
 
         // IF ENDING STATE IS DRAW STATE: push draw data to draw state for record, add word reveal
         var endingState = room.henceforth_states[status.current_state_id]
         if (endingState.type == DrawState.TYPE) {
-            endUpdateFilter.$set[`henceforth_states.${status.current_state_id}.draw_data`] = room.latest_draw_data
+            $set[`henceforth_states.${status.current_state_id}.draw_data`] = room.latest_draw_data
             status.bonus = {
                 end_state: {
                     word: (endingState as DrawState).word as string,
@@ -148,33 +139,44 @@ export class PickWordState extends GameState {
         this.round_notify = arg.round_notify
     }
 
-    /** remember to update `player_id` to `room.current_round_done_players`
+    /** 
      * `players`: incase the players have some modified such as player leave
      * */
     static async from(room: ServerRoom, players: ServerRoom['players'] = room.players): Promise<{ state: PickWordState, update: UpdateFilter<ServerRoom> & { $set: NonNullable<UpdateFilter<ServerRoom>['$set']> } }> {
-
         var round_notify: number | undefined
 
         var $set: Mutable<UpdateFilter<ServerRoom>['$set']> = {}
         var player_id: Player['id']
 
-        var pickerList: Player['id'][] = Object.keys(players)
-        pickerList.filter(id => room.current_round_done_players[id] === true)
+        var pickerList: Player['id'][] = Object.keys(players).filter(id => room.current_round_done_players[id] != true)
         if (pickerList.length == 0) {
+            console.log('PICK WORD NEW ROUND ');
             // reset pickerList to original 
             pickerList = Object.keys(players)
 
             player_id = pickerList[Math.floor(Math.random() * pickerList.length)]
+            console.log(`Player as Picker: ${player_id}`);
 
             // switch to new round
             $set.current_round = room.current_round + 1 > room.settings.rounds ? 1 : room.current_round + 1
-            $set.current_round_done_players = { [player_id]: true }
             round_notify = $set.current_round
+        } else if (pickerList.length == Object.keys(players).length) {
+            console.log('PICK WORD ROUND 1');
+            // reset pickerList to original 
+            pickerList = Object.keys(players)
 
-        } else {
             player_id = pickerList[Math.floor(Math.random() * pickerList.length)]
-            $set[`current_round_done_players.${player_id}`] = true
+            console.log(`Player as Picker: ${player_id}`);
+
+            // switch to new round
+            round_notify = 1
+        } else {
+            console.log('NORMAL PICK WORD');
+            player_id = pickerList[Math.floor(Math.random() * pickerList.length)]
+            console.log(`Player as Picker: ${player_id}`);
         }
+
+        $set[`current_round_done_players.${player_id}`] = true
 
         return {
             state: new PickWordState({

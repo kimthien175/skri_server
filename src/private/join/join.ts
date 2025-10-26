@@ -79,7 +79,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage<PrivateRoom>) {
             // notify other players
             socketPkg.socket.to(roomId).emit('player_join', { message: updateFilter.$push.messages, player })
 
-            deleteRoomSensitiveInformation(room)
+            deleteRoomSensitiveInformation(room, socketPkg.playerId)
             callback({ success: true, player, room })
 
         } catch (e: any) {

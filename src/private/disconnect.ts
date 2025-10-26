@@ -3,7 +3,7 @@ import { SocketPackage } from "../types/socket_package.js";
 import { Mongo } from "../utils/db/mongo.js";
 import { Message, NewHostMessage, PlayerJoinMessage, PlayerLeaveMessage } from "../types/message.js";
 import { DrawState, GameState, PickWordState, PrivatePreGameState, PublicLobbyState } from "./state/state.js";
-import { deleteRoomSensitiveInformation, getRunningState, PrivateRoom, PublicRoom, RoomProjection, ServerRoom } from "../types/room.js";
+import { deleteRoomSensitiveInformation, getRunningState, PrivateRoom, PublicRoom, RoomProjection, ServerRoom, StateStatus } from "../types/room.js";
 import { io } from "../socket_io.js";
 import { endDrawState } from "../events/end_draw_state.js";
 import { Redis } from "../utils/redis.js";
@@ -31,7 +31,7 @@ export async function registerOnDisconnect(socketPkg: SocketPackage) {
                     await socketPkg.room.deleteOne(filter, { session })
                     await socketPkg.endedRoom.insertOne(room as WithId<ServerRoom>, { session })
                 })
-                console.log(`onLeavingPrivateRoom: done moving to endedPrivateRoom`);
+                console.log(`onLeavingPrivateRoom: done moving to ${socketPkg.endedRoom.collectionName}`);
                 return
             }
             //#endregion
@@ -42,12 +42,15 @@ export async function registerOnDisconnect(socketPkg: SocketPackage) {
 
             const updateFilter: UpdateFilter<ServerRoom>[] = [
                 {
-                    $push: { messages: playerLeaveMsg },
-                    $unset: {
-                        [`players.${socketPkg.playerId}`]: "",
+                    $set: {
+                        messages: { $concatArrays: ['$messages', [playerLeaveMsg]] }
                     }
-                },
-                ...await handleCasesWhenPlayerLeave(socketPkg, socketPkg.playerId as string, room)]
+                } as unknown as UpdateFilter<ServerRoom>,
+                {
+                    $unset: `players.${socketPkg.playerId}`
+                } as unknown as UpdateFilter<ServerRoom>,
+                ...await handleCasesWhenPlayerLeave(socketPkg, socketPkg.playerId as string, room)
+            ]
 
             if (socketPkg.roomType == 'public') updateFilter.push({ $set: { is_available: true } } as UpdateFilter<PublicRoom>)
 
@@ -89,12 +92,10 @@ export async function handleCasesWhenPlayerLeave(socketPkg: SocketPackage, leavi
 
         updateFilter.push({
             $set: {
-                host_player_id: newOwnerId
-            },
-            $push: {
-                messages: newHostMsg
+                host_player_id: newOwnerId,
+                messages: { $concatArrays: ['$messages', [newHostMsg]] }
             }
-        });
+        } as unknown as UpdateFilter<PublicRoom>);
 
         // change host in local room
         (room as unknown as PrivateRoom).host_player_id = newOwnerId
@@ -112,9 +113,9 @@ export async function handleCasesWhenPlayerLeave(socketPkg: SocketPackage, leavi
             new PrivatePreGameState((room as unknown as PrivateRoom).host_player_id)
 
         const endGameUpdatePkg = GameState.switchState(room, newState)
-        updateFilter.push(endGameUpdatePkg)
+        updateFilter.push(...endGameUpdatePkg)
 
-        const status = endGameUpdatePkg.$set.status
+        const status = ((endGameUpdatePkg[0] as UpdateFilter<ServerRoom>).$set as NonNullable<UpdateFilter<ServerRoom>['$set']>).status as StateStatus & { command: 'end' }
         // add end game bonus
         status.bonus = {
             end_game: room.players
@@ -156,7 +157,7 @@ export async function findLonelyPlayerNewPublicRoom(room: WithId<PublicRoom>) {
             }
         },
         {
-            projection: RoomProjection, 
+            projection: RoomProjection,
             returnDocument: 'after'
         }
     )
@@ -177,24 +178,24 @@ export async function findLonelyPlayerNewPublicRoom(room: WithId<PublicRoom>) {
 
 
     const sockets = await io.in(oldRoomId).fetchSockets()
-    if (sockets.length != 1 || sockets[0].id != lonelyPlayer.socket_id){
+    if (sockets.length != 1 || sockets[0].id != lonelyPlayer.socket_id) {
 
         // make that only player exit
         io.to(lonelyPlayer.socket_id).emit('reload', { success: false, reason: '' })
 
         throw Error(`[findLonelyPlayerNewPublicRoom]: sockets is supposed to have only 1 socket`)
-    } 
+    }
     sockets[0].leave(oldRoomId)
     sockets[0].join(newRoomId)
 
     //REDIS
     await Redis.setRoomId(lonelyPlayer.socket_id, newRoomId)
 
-    deleteRoomSensitiveInformation(newRoom)
-    io.to(lonelyPlayer.socket_id).emit('reload', {success: true, room: newRoom})
+    deleteRoomSensitiveInformation(newRoom, lonelyPlayer.id)
+    io.to(lonelyPlayer.socket_id).emit('reload', { success: true, room: newRoom })
 
     //#endregion
 
     // notify other players in the new room
-    io.to(newRoomId).except(lonelyPlayer.socket_id).emit('player_join',{message: joinMessage, player: lonelyPlayer})
+    io.to(newRoomId).except(lonelyPlayer.socket_id).emit('player_join', { message: joinMessage, player: lonelyPlayer })
 }

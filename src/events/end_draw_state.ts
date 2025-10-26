@@ -1,5 +1,5 @@
 import { ObjectId, UpdateFilter } from "mongodb";
-import { getRunningState, PrivateRoom, ServerRoom } from "../types/room.js";
+import { getRunningState, PrivateRoom, ServerRoom, StateStatus } from "../types/room.js";
 import { SocketPackage } from "../types/socket_package.js";
 import { DrawState, GameState, PickWordState, PrivatePreGameState } from "../private/state/state.js";
 
@@ -26,9 +26,13 @@ export async function endDrawState(socketPkg: SocketPackage, room: ServerRoom, e
     }
 
     var switchStateUpdate = GameState.switchState(room, newState, isEndGame)
-    updateFilter.push(switchStateUpdate)
+    updateFilter.push(...switchStateUpdate)
 
-    socketPkg.emitNewStates({ wholeRoom: true }, switchStateUpdate.$set.status, newState)
+    socketPkg.emitNewStates({ wholeRoom: true }, (
+        (switchStateUpdate[0] as UpdateFilter<ServerRoom>)
+        .$set as NonNullable<UpdateFilter<ServerRoom>['$set']>)
+        .status as StateStatus, 
+        newState)
 
     return updateFilter
 }

@@ -84,13 +84,22 @@ export const RoomProjection
   code: 1,
   system: 1,
   current_round: 1,
-  latest_draw_data: 1
+  latest_draw_data: 1,
+  current_round_done_players: 1
 }
 
-export function deleteRoomSensitiveInformation(room:ServerRoom){
-  GameState.removeSensitiveProperties(room.henceforth_states[room.status.current_state_id])
-  if (room.status.command == 'end')
-    GameState.removeSensitiveProperties(room.henceforth_states[room.status.next_state_id])
+export function deleteRoomSensitiveInformation(room:ServerRoom, playerId: Player['id']){
+  const currentState = room.henceforth_states[room.status.current_state_id]
+  if (currentState.player_id != playerId){
+    GameState.removeSensitiveProperties(currentState)
+
+  }
+  if (room.status.command == 'end'){
+    const nextState = room.henceforth_states[room.status.next_state_id]
+    if (nextState.player_id != playerId){
+      GameState.removeSensitiveProperties(nextState)
+    }
+  }
   delete (room as any)._id
 
   if (!room.code.startsWith('p_')) delete room.settings.custom_words
