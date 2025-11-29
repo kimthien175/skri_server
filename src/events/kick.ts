@@ -1,17 +1,18 @@
 import { ObjectId, UpdateFilter, WithId } from "mongodb";
 import { getNewRoomCode, SocketPackage } from "../types/socket_package.js";
-import { ServerRoom } from "../types/room.js";
+import { roomStringifier, ServerRoom } from "../types/room.js";
 import { PlayerGotKickedMessage } from "../types/message.js";
 import { io } from "../socket_io.js";
 import { ServerTicket } from "../types/ticket.js";
 import { Player } from "../types/player.js";
-import { handleCasesWhenPlayerLeave } from "../private/disconnect.js";
 import { Redis } from "../utils/redis.js";
+import { forceDisconnect, handleCasesWhenPlayerLeave } from "../private/disconnect.js";
 
 export const registerKick = async function (socketPkg: SocketPackage) {
     socketPkg.socket.on('host_kick', async function (victimId: string, callback: (res: {
         success: true
     } | { success: false, reason: any }) => void) {
+        console.log('[HOST_KICK]');
         // verify host 
         try {
             if (victimId == socketPkg.playerId) throw Error("host can't kick themself")
@@ -24,7 +25,9 @@ export const registerKick = async function (socketPkg: SocketPackage) {
             var room = await socketPkg.room.findOne(filter)
             if (room == null) throw Error('room not found')
 
-            var updateResult = await socketPkg.room.updateOne(filter, await kick(room.players[victimId], socketPkg, room))
+            const updateFIlterPipeline = await kick(room.players[victimId], socketPkg, room)
+            console.log(`host kick update pipeline: ${JSON.stringify(updateFIlterPipeline, roomStringifier, 2)}`);
+            var updateResult = await socketPkg.room.updateOne(filter, updateFIlterPipeline)
             if (updateResult.modifiedCount != 1) throw Error('update failed')
 
             callback({ success: true })
@@ -37,7 +40,8 @@ export const registerKick = async function (socketPkg: SocketPackage) {
 
 /** emit to clients, not save to db, return update filter for other tasks
  *  */
-export async function kick(victim: Player, socketPkg: SocketPackage, room: WithId<ServerRoom>): Promise<UpdateFilter<ServerRoom>> {
+export async function kick(victim: Player, socketPkg: SocketPackage, room: WithId<ServerRoom>): Promise<UpdateFilter<ServerRoom>[]> {
+    console.log(`[kick]: socket ${victim.socket_id}`);
     const roomId = await Redis.getRoomId(socketPkg.socket.id)
     const message = new PlayerGotKickedMessage(victim.name)
     const newCode = await getNewRoomCode(socketPkg.roomType)
@@ -48,16 +52,15 @@ export async function kick(victim: Player, socketPkg: SocketPackage, room: WithI
         {
             $set: {
                 code: newCode,
-                [`tickets.${ticketSet.id}`]: ticketSet.ticket
-            },
-            $push: {
-                messages: message
-            },
-            $unset: {
-                [`players.${victim.id}`]: ""
+                [`tickets.${ticketSet.id}`]: ticketSet.ticket,
+                messages: { $concatArrays: ['$messages', [message]] } as unknown as NonNullable<UpdateFilter<ServerRoom>['$set']>['messages']
             }
-        },
-        ...await handleCasesWhenPlayerLeave(socketPkg, victim.id, room as ServerRoom)
+        }, {
+            $unset: [
+                `players.${victim.id}`,
+                `current_round_done_players.${victim.id}`
+            ] as unknown as UpdateFilter<ServerRoom>['$unset']
+        }
     ]
 
     // delete valid_date
@@ -70,6 +73,10 @@ export async function kick(victim: Player, socketPkg: SocketPackage, room: WithI
         message,
         ticket: clientTicket
     })
+
+    forceDisconnect(victim.socket_id)
+
+    updateFilter.push(...(await handleCasesWhenPlayerLeave(socketPkg, victim.id, room)))
 
     return updateFilter
 }

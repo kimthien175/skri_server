@@ -1,12 +1,13 @@
-import { Collection, Filter, ObjectId, UpdateFilter, WithId } from "mongodb";
+import { UpdateFilter, WithId } from "mongodb";
 import { SocketPackage } from "../types/socket_package.js";
 import { Mongo } from "../utils/db/mongo.js";
 import { Message, NewHostMessage, PlayerJoinMessage, PlayerLeaveMessage } from "../types/message.js";
-import { DrawState, GameState, PickWordState, PrivatePreGameState, PublicLobbyState } from "./state/state.js";
-import { deleteRoomSensitiveInformation, getRunningState, PrivateRoom, PublicRoom, RoomProjection, ServerRoom, StateStatus } from "../types/room.js";
+import { GameState, PrivatePreGameState, PublicLobbyState } from "./state/state.js";
+import { deleteRoomSensitiveInformation, getRunningState, PrivateRoom, PublicRoom, RoomProjection, roomStringifier, ServerRoom, StateStatus } from "../types/room.js";
 import { io } from "../socket_io.js";
 import { endDrawState } from "../events/end_draw_state.js";
 import { Redis } from "../utils/redis.js";
+import { Player } from "../types/player.js";
 
 /**
  * send PlayerLeaveMessage, handle cases when player leave 
@@ -14,7 +15,13 @@ import { Redis } from "../utils/redis.js";
  */
 export async function registerOnDisconnect(socketPkg: SocketPackage) {
     socketPkg.socket.on('disconnect', async () => {
+        console.log('[ON_DISCONNECT]')
         try {
+            if (socketPkg.socket.data.isForceDisconnect) {
+                console.log('player is forced disconnected, skip resolve game data');
+                return
+            }
+
             const roomId = await Redis.getRoomId(socketPkg.socket.id)
             const filter = socketPkg.getFilter({
                 [`players.${socketPkg.playerId}`]: { $exists: true }
@@ -25,20 +32,22 @@ export async function registerOnDisconnect(socketPkg: SocketPackage) {
 
             //#region CASE 1: ALONE PLAYER IN ROOM: DELETE ROOM
             if (Object.keys(room.players).length <= 1) {
-                console.log('DISCONNECT CASE 1');
+                console.log('CASE 1: ALONE PLAYER IN ROOM: DELETE ROOM');
                 // delete room and move to ended rooms
                 await Mongo.doSession(async (session) => {
                     await socketPkg.room.deleteOne(filter, { session })
                     await socketPkg.endedRoom.insertOne(room as WithId<ServerRoom>, { session })
                 })
-                console.log(`onLeavingPrivateRoom: done moving to ${socketPkg.endedRoom.collectionName}`);
+                console.log(`moved room doc to ${socketPkg.endedRoom.collectionName}`);
                 return
             }
             //#endregion
 
             // no need to delete room, player leave
             const playerLeaveMsg = new PlayerLeaveMessage(socketPkg.playerId as string, socketPkg.name)
+
             io.to(roomId).emit('player_leave', playerLeaveMsg)
+            console.log(`emitted ${JSON.stringify(playerLeaveMsg, null, 2)} to room ${roomId}`);
 
             const updateFilter: UpdateFilter<ServerRoom>[] = [
                 {
@@ -52,8 +61,9 @@ export async function registerOnDisconnect(socketPkg: SocketPackage) {
                 ...await handleCasesWhenPlayerLeave(socketPkg, socketPkg.playerId as string, room)
             ]
 
-            if (socketPkg.roomType == 'public') updateFilter.push({ $set: { is_available: true } } as UpdateFilter<PublicRoom>)
+            if (socketPkg.roomType == 'public') updateFilter.push({ $set: { is_available: true } })
 
+            console.log(`updating db with ${JSON.stringify(updateFilter, roomStringifier, 2)}`);
             var updateResult = await socketPkg.room.updateOne(filter, updateFilter);
             if (updateResult.modifiedCount != 1) throw new Error('update error');
 
@@ -67,47 +77,64 @@ export async function registerOnDisconnect(socketPkg: SocketPackage) {
                 await findLonelyPlayerNewPublicRoom(room as WithId<PublicRoom>)
             }
         } catch (e) {
-            console.log(`[DISCONNECT] ${e}`);
+            console.log(`[DISCONNECT] ${JSON.stringify(e)}`);
         }
     })
 }
 
+function _randomNewHostId(players: ServerRoom['players'], except: Player['id']) {
+    const newOwnerCandidatesIds = Object.keys(players)
+    const oldOwnerIdIndex = newOwnerCandidatesIds.indexOf(except)
+    if (oldOwnerIdIndex !== -1) {
+        newOwnerCandidatesIds.splice(oldOwnerIdIndex, 1)
+    } else {
+        throw Error('leaving player is supposed to exist in data before player handler')
+    }
+    return newOwnerCandidatesIds[Math.floor(Math.random() * newOwnerCandidatesIds.length)]
+}
+
 export async function handleCasesWhenPlayerLeave(socketPkg: SocketPackage, leavingPlayerId: string, room: ServerRoom): Promise<UpdateFilter<ServerRoom>[]> {
+    console.log('[handleCasesWhenPlayerLeave]');
     const updateFilter: UpdateFilter<ServerRoom>[] = []
     const roomId = await Redis.getRoomId(socketPkg.socket.id)
 
     //#region PRIVATE ROOM: LEAVING PLAYER AS HOST PLAYER
     if (socketPkg.roomType == 'private' && leavingPlayerId == (room as unknown as PrivateRoom).host_player_id) {
+        console.log('random new host');
 
-        var newOwnerCandidatesIds = Object.keys(room.players)
-        var oldOwnerIdIndex = newOwnerCandidatesIds.indexOf(leavingPlayerId)
-        if (oldOwnerIdIndex !== -1) {
-            newOwnerCandidatesIds.splice(oldOwnerIdIndex, 1)
+        const newHostId = _randomNewHostId(room.players, leavingPlayerId)
+
+        const newHostMsg: Message = new NewHostMessage(newHostId, room.players[newHostId].name)
+        io.to(roomId).emit('new_host', newHostMsg);
+        console.log(`emit ${JSON.stringify(newHostMsg)} to room ${roomId}`);
+
+        const newHostUpdateFilter: UpdateFilter<PrivateRoom> = {
+            $set: {
+                host_player_id: newHostId,
+                messages: { $concatArrays: ['$messages', [newHostMsg]] } as NonNullable<UpdateFilter<PrivateRoom>['$set']>['$messages']
+            }
         }
 
-        var newOwnerId = newOwnerCandidatesIds[Math.floor(Math.random() * newOwnerCandidatesIds.length)]
-
-        const newHostMsg: Message = new NewHostMessage(newOwnerId, room.players[newOwnerId].name)
-        io.to(roomId).emit('new_host', newHostMsg);
-
-        updateFilter.push({
-            $set: {
-                host_player_id: newOwnerId,
-                messages: { $concatArrays: ['$messages', [newHostMsg]] }
-            }
-        } as unknown as UpdateFilter<PublicRoom>);
+        updateFilter.push(newHostUpdateFilter as unknown as UpdateFilter<PublicRoom>);
 
         // change host in local room
-        (room as unknown as PrivateRoom).host_player_id = newOwnerId
+        (room as unknown as PrivateRoom).host_player_id = newHostId
+        console.log(`hange local data host id to ${newHostId}`)
     }
     //#endregion
 
     const playersIdList = Object.keys(room.players)
     const state = getRunningState(room)
 
-    //#region END GAME IF THERE IS 1 PLAYER LEFT
+    // the game is not running, just return though
+    if (state.type === PrivatePreGameState.TYPE) {
+        console.log(`update filter: ${JSON.stringify(updateFilter, roomStringifier, 2)}`);
+        return updateFilter
+    }
 
-    if (playersIdList.length <= 2) {
+    //#region END GAME IF THERE IS 1 PLAYER LEFT
+    if (playersIdList.length === 2) {
+        console.log('the game is running, end game');
         const newState: GameState = socketPkg.roomType == 'public' ?
             new PublicLobbyState() :
             new PrivatePreGameState((room as unknown as PrivateRoom).host_player_id)
@@ -115,7 +142,7 @@ export async function handleCasesWhenPlayerLeave(socketPkg: SocketPackage, leavi
         const endGameUpdatePkg = GameState.switchState(room, newState)
         updateFilter.push(...endGameUpdatePkg)
 
-        const status = ((endGameUpdatePkg[0] as UpdateFilter<ServerRoom>).$set as NonNullable<UpdateFilter<ServerRoom>['$set']>).status as StateStatus & { command: 'end' }
+        const status = endGameUpdatePkg[0].$set.status
         // add end game bonus
         status.bonus = {
             end_game: room.players
@@ -127,11 +154,11 @@ export async function handleCasesWhenPlayerLeave(socketPkg: SocketPackage, leavi
 
     //#region SWITCH STATE IF LEAVING PLAYER HAVE IMPACT ON CURRENT STATE IN RUNNING GAME
 
-    else if (leavingPlayerId == state.player_id && (state.type == PickWordState.TYPE || state.type == DrawState.TYPE)) {
+    else if (leavingPlayerId == state.player_id) {
         updateFilter.push(...(await endDrawState(socketPkg, room, leavingPlayerId)))
     }
     //#endregion
-
+    console.log(`update filter: ${JSON.stringify(updateFilter, roomStringifier, 2)}`);
     return updateFilter
 }
 
@@ -198,4 +225,18 @@ export async function findLonelyPlayerNewPublicRoom(room: WithId<PublicRoom>) {
 
     // notify other players in the new room
     io.to(newRoomId).except(lonelyPlayer.socket_id).emit('player_join', { message: joinMessage, player: lonelyPlayer })
+}
+
+export async function forceDisconnect(socketId: string){
+    // force client disconnect
+    const victimSocket = io.sockets.sockets.get(socketId)
+    if (victimSocket == undefined) throw Error(`victim socket ${socketId} is undefined!`);
+
+    victimSocket.data.isForceDisconnect = true
+
+    victimSocket.disconnect(true)
+    console.log(`forced socket ${socketId} to disconnect`);
+
+    // clear resources of leaving player
+    await Redis.clear(socketId)
 }

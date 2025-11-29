@@ -5,6 +5,7 @@ import { Player } from "../../types/player"
 import { Mutable } from "../../types/type.js"
 import { Random } from "../../utils/random/random.js"
 
+type SetStateType = { $set: NonNullable<UpdateFilter<ServerRoom>['$set']>  & {status: StateStatus & {command: 'end'}}}
 export abstract class GameState {
     constructor(public type: string, player_id?: Player['id']) {
         this.id = (new ObjectId()).toString()
@@ -29,10 +30,11 @@ export abstract class GameState {
 
     player_id?: Player['id']
 
-    static switchState(room: ServerRoom, nextState: GameState, endGame?: boolean): UpdateFilter<ServerRoom>[] {
+
+
+    static switchState(room: ServerRoom, nextState: GameState, endGame?: boolean): [SetStateType] | [SetStateType, Pick<UpdateFilter<ServerRoom>, '$unset'>] {
         var endDate = new Date()
         if (room.status.command == 'start') {
-
             return [{
                 $set: {
                     status: {
@@ -47,21 +49,21 @@ export abstract class GameState {
             }]
         }
 
-        var status: StateStatus & { command: 'end' } = {
+        const status: StateStatus & { command: 'end' } = {
             current_state_id: room.status.next_state_id,
             command: 'end',
             date: endDate,
             next_state_id: nextState.id
         }
 
-        var $set: NonNullable<UpdateFilter<ServerRoom>['$set']> = {
+        const $set: SetStateType['$set'] = {
             status,
             [`henceforth_states.${room.status.next_state_id}.end_date`]: endDate,
             [`henceforth_states.${nextState.id}`]: nextState,
-            outdated_states: { $concatArrays: ['$outdated_states', [room.henceforth_states[room.status.current_state_id]]] }
-        } as unknown as NonNullable<UpdateFilter<ServerRoom>['$set']>
+            outdated_states: { $concatArrays: ['$outdated_states', [room.henceforth_states[room.status.current_state_id]]] } as unknown as NonNullable<UpdateFilter<ServerRoom>['$set']>['outdated_states']
+        }
 
-        var endUpdateFilter: UpdateFilter<ServerRoom>[] = [
+        const result: [SetStateType, Pick<UpdateFilter<ServerRoom>, '$unset'>] = [
             {
                 $set
             }, {
@@ -81,7 +83,7 @@ export abstract class GameState {
             }
         }
 
-        if (endGame) {
+        if (endGame === true) {
             // update bonus
             status.bonus = {
                 ...status.bonus,
@@ -110,7 +112,9 @@ export abstract class GameState {
             }
         }
 
-        return endUpdateFilter
+        console.log(`switch state data: ${JSON.stringify(result, null, 2)}`);
+
+        return result
     }
 
     static isEndRound(room: ServerRoom): boolean {

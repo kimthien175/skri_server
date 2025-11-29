@@ -46,6 +46,11 @@ export interface ServerRoom {
   latest_draw_data: DrawData
 }
 
+export const roomStringifier = (key: any, value: any): any=>{
+  if (value.type == 'brush') return `BrushStep{ stroke_width: ${value.stroke_width}; color: ${value.color}; points: Array{${value.points.length}} } `
+  return value
+}
+
 export function getRunningState(room: ServerRoom): GameState {
   if (room.status.command == "end")
     return room.henceforth_states[room.status.next_state_id];

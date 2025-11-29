@@ -73,6 +73,8 @@ export class SocketPackage<T extends ServerRoom = ServerRoom> {
                 [state.id]: state
             }
         })
+
+        console.log(`emit new state to ${JSON.stringify(to)} with ${JSON.stringify(status)} and ${JSON.stringify(state)}`);
     }
 }
 

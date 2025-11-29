@@ -1,12 +1,19 @@
-import { ObjectId, UpdateFilter } from "mongodb";
-import { getRunningState, PrivateRoom, ServerRoom, StateStatus } from "../types/room.js";
+import { UpdateFilter } from "mongodb";
+import { getRunningState, PrivateRoom, roomStringifier, ServerRoom, StateStatus } from "../types/room.js";
 import { SocketPackage } from "../types/socket_package.js";
 import { DrawState, GameState, PickWordState, PrivatePreGameState } from "../private/state/state.js";
 
 import { Player } from "../types/player.js";
 
+/**
+ * switch to new state but
+ * @param socketPkg 
+ * @param room 
+ * @param excludedPlayerId 
+ * @returns 
+ */
 export async function endDrawState(socketPkg: SocketPackage, room: ServerRoom, excludedPlayerId?: Player['id']): Promise<UpdateFilter<ServerRoom>[]> {
-
+    console.log('[endDrawState]');
     const updateFilter: UpdateFilter<ServerRoom>[] = []
     var newState: GameState
 
@@ -28,11 +35,10 @@ export async function endDrawState(socketPkg: SocketPackage, room: ServerRoom, e
     var switchStateUpdate = GameState.switchState(room, newState, isEndGame)
     updateFilter.push(...switchStateUpdate)
 
-    socketPkg.emitNewStates({ wholeRoom: true }, (
-        (switchStateUpdate[0] as UpdateFilter<ServerRoom>)
-        .$set as NonNullable<UpdateFilter<ServerRoom>['$set']>)
-        .status as StateStatus, 
+    socketPkg.emitNewStates({ wholeRoom: true },
+        switchStateUpdate[0].$set.status,
         newState)
+    console.log(`update filter: ${JSON.stringify(updateFilter, roomStringifier, 2)}`);
 
     return updateFilter
 }
@@ -50,7 +56,7 @@ export function registerEndDrawState(socketPkg: SocketPackage) {
 
             await socketPkg.room.updateOne(filter, await endDrawState(socketPkg, room))
         } catch (e) {
-            console.log(`[END DRAW STATE]: ${e}`);
+            console.log(`[END DRAW STATE]: ${JSON.stringify(e)}`);
         }
     })
 }

@@ -1,12 +1,9 @@
-import { Mongo } from "../../utils/db/mongo.js";
 import { SocketPackage } from "../../types/socket_package.js";
 import { PrivateRoomJoinRequest, PrivateRoomRejoinRequest, RoomResponse } from "../../types/type.js";
 import { deleteRoomSensitiveInformation, PrivateRoom, RoomProjection } from "../../types/room.js";
 import { Random } from "../../utils/random/random.js";
-import { Collection, Filter, ObjectId, ReturnDocument, UpdateFilter } from "mongodb";
+import {  Filter, ObjectId, ReturnDocument, UpdateFilter } from "mongodb";
 import { PlayerJoinMessage } from "../../types/message.js";
-import { GameState } from "../state/state.js";
-import { Player } from "../../types/player.js";
 import { Redis } from "../../utils/redis.js";
 
 /**
@@ -29,12 +26,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage<PrivateRoom>) {
             }
             //#endregion
 
-            //#region SOCKET PACKAGE
-            //socketPkg.isOwner = false
-            socketPkg.name = player.name
-            socketPkg.roomType = 'private'
-            socketPkg.playerId = player.id
-            //#endregion
+
 
             var ticketId = (requestPkg as PrivateRoomRejoinRequest).id
             var roomFilter
@@ -64,6 +56,13 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage<PrivateRoom>) {
                 $set: { [`players.${player.id}`]: player }
             }
 
+            //#region SOCKET PACKAGE
+            //socketPkg.isOwner = false
+            socketPkg.name = player.name
+            socketPkg.roomType = 'private'
+            socketPkg.playerId = player.id
+            //#endregion
+
             var room = await socketPkg.room.findOneAndUpdate(filter, updateFilter, {
                 projection: RoomProjection,
                 returnDocument: ReturnDocument.AFTER
@@ -81,7 +80,7 @@ export function registerJoinPrivateRoom(socketPkg: SocketPackage<PrivateRoom>) {
 
             deleteRoomSensitiveInformation(room, socketPkg.playerId)
             callback({ success: true, player, room })
-
+            console.log(`player ${JSON.stringify(player, null, 2)} joined room ${roomId}`);
         } catch (e: any) {
             console.log(`[JOIN PRIVATE ROOM]: ${socketPkg.playerId} ${requestPkg}`)
             console.log(e);

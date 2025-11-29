@@ -111,6 +111,8 @@ await Mongo.publicRooms.createIndex({ is_available: 1 }, { name: 'is_available_i
 await Mongo.publicRooms.deleteMany({})
 
 await Mongo.privateRooms.createIndex({ code: 1 }, { unique: true, name: 'code_unique' })
+// delete all privateRooms
+await Mongo.privateRooms.deleteMany({})
 
 await Mongo.popularEnglishWords.createIndex({ word: 1 }, { unique: true, name: "word_unique" })
 
